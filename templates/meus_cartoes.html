@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero-card" style="display: block;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <p class="eyebrow">Ajustes Pessoais</p>
+            <h1>Gerir Meus Cartões</h1>
+        </div>
+        <a href="{{ url_for('dashboard') }}" class="ghost-button" style="text-decoration: none; padding: 10px 16px;">⬅ Voltar ao Dashboard</a>
+    </div>
+</section>
+
+<section class="dashboard-grid" style="margin-top: 22px;">
+    <article class="panel">
+        <div class="panel-heading"><h2>Cadastrar Novo Cartão</h2></div>
+        <form method="post" action="{{ url_for('add_cartao') }}" class="stack-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <label>Nome do Cartão (Apelido) <input type="text" name="nome" placeholder="Ex: Nubank, Visa Gold" required></label>
+            <label>Limite Global (R$) <input type="number" name="limite" step="0.01" required></label>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <label>Dia de Fechamento <input type="number" name="dia_fechamento" min="1" max="31" value="5" required></label>
+                <label>Dia de Vencimento <input type="number" name="dia_vencimento" min="1" max="31" value="10" required></label>
+            </div>
+            <button type="submit" class="primary-button" style="background: linear-gradient(135deg, #1a5caf, #c88d1d);">Salvar Novo Cartão</button>
+        </form>
+    </article>
+
+    <article class="panel" style="grid-column: span 2;">
+        <div class="panel-heading"><h2>Cartões Ativos na Sua Conta</h2></div>
+        
+        {% if cartoes %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Cartão</th><th>Datas Importantes</th><th>Limite</th><th>Ações Relações</th></tr>
+                </thead>
+                <tbody>
+                    {% for c in cartoes %}
+                    <tr>
+                        <td><strong>{{ c.nome }}</strong></td>
+                        <td>Fecha dia <strong>{{ c.dia_fechamento }}</strong> | Vence dia <strong>{{ c.dia_vencimento }}</strong></td>
+                        <td>{{ c.limite|brl }}</td>
+                        <td>
+                            <div style="display: flex; gap: 4px;">
+                                <button type="button" class="ghost-button" onclick="document.getElementById('dialog-edit-cartao-{{c.id}}').showModal()" style="padding: 6px 10px;">✏️ Editar</button>
+                                <form method="post" action="{{ url_for('delete_cartao', id=c.id) }}" onsubmit="return confirm('Apagar o cartão apagará também o histórico de compras atrelado a ele. Tem certeza?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="ghost-button danger-button" style="padding: 6px 10px;">X Apagar</button>
+                                </form>
+                            </div>
+
+                            <dialog id="dialog-edit-cartao-{{c.id}}" style="border:none; border-radius:14px; padding:24px; box-shadow:var(--shadow); width:350px;">
+                                <h3>Editar Detalhes do Cartão</h3>
+                                <form method="post" action="{{ url_for('edit_cartao', id=c.id) }}" class="stack-form">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <label>Nome <input type="text" name="nome" value="{{c.nome}}" required></label>
+                                    <label>Limite Total <input type="number" name="limite" value="{{c.limite}}" step="0.01" required></label>
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                                        <label>Fecha dia <input type="number" name="dia_fechamento" value="{{c.dia_fechamento}}" required></label>
+                                        <label>Vence dia <input type="number" name="dia_vencimento" value="{{c.dia_vencimento}}" required></label>
+                                    </div>
+                                    <div style="display:flex; gap:10px; margin-top:12px;">
+                                        <button type="submit" class="primary-button">Salvar</button>
+                                        <button type="button" class="ghost-button" onclick="this.closest('dialog').close()">Cancelar</button>
+                                    </div>
+                                </form>
+                            </dialog>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 40px; background: rgba(0,0,0,0.02); border-radius: 12px; border: 1px dashed var(--line);">
+            <p style="color: var(--muted); margin: 0;">Você ainda não cadastrou nenhum cartão de crédito.</p>
+        </div>
+        {% endif %}
+    </article>
+</section>
+{% endblock %}

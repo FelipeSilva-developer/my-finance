@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+    <article class="panel" style="max-width: 400px; width: 100%; padding: 40px; text-align: center;">
+        
+        <div style="margin-bottom: 30px;">
+            <p class="eyebrow">Acesso Multi-Usuário</p>
+            <h1 style="font-size: 2rem;">Controle Financeiro</h1>
+        </div>
+
+        <form method="post" action="{{ url_for('login') }}" class="stack-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <label style="text-align: left;">
+                Usuário
+                <input type="text" name="username" required style="margin-top: 8px;">
+            </label>
+            <label style="text-align: left; margin-top: 14px;">
+                Senha
+                <input type="password" name="senha" placeholder="Introduza a sua senha" required style="margin-top: 8px;">
+            </label>
+            <button type="submit" class="primary-button" style="margin-top: 20px;">Entrar no Painel</button>
+        </form>
+
+    </article>
+</div>
+{% endblock %}

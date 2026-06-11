@@ -1,0 +1,17 @@
+{
+  "name": "Controlo Financeiro",
+  "short_name": "Finanças",
+  "description": "App de gestão financeira pessoal.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f9fa",
+  "theme_color": "#1a5caf",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
