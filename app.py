@@ -18,15 +18,13 @@ from flask_wtf.csrf import CSRFProtect
 BASE_DIR_PATH = Path(__file__).resolve().parent
 ZERO = Decimal("0.00")
 
-# --- CONFIGURAÇÃO DE AMBIENTE ---
+# --- 1. CONFIGURAÇÃO DE PASTAS ---
 if getattr(sys, 'frozen', False):
     # Se estiver rodando como executável (.exe)
     BASE_DIR = Path(sys.executable).parent
     DATABASE_PATH = BASE_DIR / "financeiro.db"
-    
-    app = Flask(__name__, 
-                template_folder=os.path.join(sys._MEIPASS, 'templates'),
-                static_folder=os.path.join(sys._MEIPASS, 'static'))
+    template_dir = os.path.join(sys._MEIPASS, 'templates')
+    static_dir = os.path.join(sys._MEIPASS, 'static')
     
     env_path = os.path.join(sys._MEIPASS, '.env')
     if os.path.exists(env_path):
@@ -35,14 +33,18 @@ else:
     # Comportamento normal rodando pelo Python ou Vercel
     BASE_DIR = BASE_DIR_PATH
     DATABASE_PATH = BASE_DIR / "financeiro.db"
-    app = Flask(__name__)
+    template_dir = os.path.join(BASE_DIR, 'templates')
+    static_dir = os.path.join(BASE_DIR, 'static')
     load_dotenv()
 
-# --- CONFIGURAÇÃO DO BANCO DE DADOS (NUVEM OU LOCAL) ---
+# --- 2. CRIAÇÃO DO APP (A linha que o Vercel precisa ver livre) ---
+app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
+
+# --- 3. CONFIGURAÇÃO DO BANCO DE DADOS (NUVEM OU LOCAL) ---
 database_url = os.environ.get("DATABASE_URL")
 
 if database_url:
-    # Se estiver no Vercel, usa o link do Supabase (ajustando o prefixo obrigatório do SQLAlchemy)
+    # Se estiver no Vercel, usa o link do Supabase
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     app.config["SQLALCHEMY_DATABASE_URI"] = database_url
@@ -55,6 +57,9 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "financas-secret-key-loc
 
 csrf = CSRFProtect(app)
 db = SQLAlchemy(app)
+
+# --- MODELOS DE BANCO DE DADOS ---
+# (Daqui para baixo o seu código continua exatamente igual, não precisa mexer)
 
 # --- MODELOS DE BANCO DE DADOS ---
 
