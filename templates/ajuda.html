@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>Guia Rápido de Uso</h2>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Voltar ao Início</a>
+</div>
+
+<div class="help-section">
+    <h3>📊 Visão Geral e Orçamentos</h3>
+    <p>A aba principal do sistema mostra o resumo do seu mês. Aqui você vê o que entrou, o que saiu e o seu saldo real.</p>
+    <ul>
+        <li><strong>Adicionar Receita:</strong> Registre os seus ganhos (salários, rendas extras). Eles aumentam o seu saldo consolidado.</li>
+        <li><strong>Orçamentos:</strong> Defina limites de gastos por categoria (Ex: "Até R$ 500 em Lazer"). A barra vai encher conforme você gasta, ficando vermelha se ultrapassar o limite.</li>
+    </ul>
+</div>
+
+<div class="help-section">
+    <h3>🗓️ Cronograma (Contas a Pagar)</h3>
+    <p>Aqui você lança as suas despesas fixas ou parceladas que não foram passadas no cartão de crédito (Ex: Água, Luz, Aluguel).</p>
+    <ul>
+        <li><strong>Lançamento Único:</strong> Uma conta normal de um mês só.</li>
+        <li><strong>Lançamento Parcelado:</strong> Se você dividir uma compra na loja (sem ser no cartão), o sistema criará as parcelas automaticamente para os próximos meses, por isso coloque o valor cheio da compra</li>
+        <li><strong>Dar Baixa:</strong> Ao pagar a conta, clique no botão de "check" (✔️). O valor sairá das pendências e será contabilizado como gasto.</li>
+    </ul>
+</div>
+
+<div class="help-section">
+    <h3>💳 Cartões de Crédito</h3>
+    <p>O sistema faz a gestão inteligente das suas faturas.</p>
+    <ul>
+        <li><strong>Passo 1:</strong> Vá em "Meus Cartões" e cadastre o seu cartão (nome, limite, dia de fechamento e vencimento).</li>
+        <li><strong>Passo 2:</strong> Lance uma despesa na aba de Cartões. Informe a data da compra. O sistema saberá automaticamente em qual fatura essa compra vai cair (antes ou depois do fechamento).</li>
+        <li><strong>Fatura Virtual:</strong> Na aba de Cronograma, o sistema junta todos os gastos de um cartão e cria uma "Fatura Virtual". Quando você paga a fatura virtual, todas as despesas daquele mês constam como pagas automaticamente!</li>
+    </ul>
+</div>
+
+<div class="help-section">
+    <h3>💰 Patrimônio e Metas</h3>
+    <p>Para quem quer investir e acompanhar o crescimento do dinheiro.</p>
+    <ul>
+        <li><strong>Criar Meta:</strong> Defina um objetivo (Ex: "Comprar um Carro", R$ 50.000 em 24 meses). O sistema vai calcular quanto você precisa guardar por mês.</li>
+        <li><strong>Investimentos:</strong> Registre os seus aportes em CDB, Tesouro, Ações, etc. Você pode vincular um investimento a uma Meta para ver a barra de progresso encher.</li>
+        <li><strong>Atualizar/Resgatar:</strong> Todo mês você pode atualizar o valor do investimento para refletir os juros. Se resgatar o dinheiro, ele volta para o seu fluxo de caixa como "Renda Extra".</li>
+    </ul>
+</div>
+
+<div class="help-section" style="background-color: #f8f9fa; border-left: 4px solid #1a5caf;">
+    <h3>📞 Precisa de mais ajuda?</h3>
+    <p>Se você encontrou algum erro ou tem dúvidas adicionais sobre como usar a plataforma, entre em contato com o suporte técnico:</p>
+    <ul>
+        <li><strong>E-mail:</strong> suporte@seusistema.com</li>
+        <li><strong>WhatsApp:</strong> (11) 99999-9999</li>
+    </ul>
+    <p><em>* (Lembre-se de alterar esses dados de contato diretamente no arquivo ajuda.html se desejar)</em></p>
+</div>
+{% endblock %}
