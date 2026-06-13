@@ -7,6 +7,8 @@ import uuid
 import webbrowser
 from threading import Timer
 from pathlib import Path
+import pytz  # MELHORIA 2: Importando biblioteca de fuso horário
+
 from flask import Flask, flash, redirect, render_template, request, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import extract
@@ -18,9 +20,12 @@ from flask_wtf.csrf import CSRFProtect
 BASE_DIR_PATH = Path(__file__).resolve().parent
 ZERO = Decimal("0.00")
 
+# MELHORIA 2: Função central para pegar sempre a data e hora do Brasil
+def get_today_br():
+    return datetime.now(pytz.timezone('America/Sao_Paulo')).date()
+
 # --- 1. CONFIGURAÇÃO DE PASTAS ---
 if getattr(sys, 'frozen', False):
-    # Se estiver rodando como executável (.exe)
     BASE_DIR = Path(sys.executable).parent
     DATABASE_PATH = BASE_DIR / "financeiro.db"
     template_dir = os.path.join(sys._MEIPASS, 'templates')
@@ -30,36 +35,37 @@ if getattr(sys, 'frozen', False):
     if os.path.exists(env_path):
         load_dotenv(env_path)
 else:
-    # Comportamento normal rodando pelo Python ou Vercel
     BASE_DIR = BASE_DIR_PATH
     DATABASE_PATH = BASE_DIR / "financeiro.db"
     template_dir = os.path.join(BASE_DIR, 'templates')
     static_dir = os.path.join(BASE_DIR, 'static')
     load_dotenv()
 
-# --- 2. CRIAÇÃO DO APP (A linha que o Vercel precisa ver livre) ---
+# --- 2. CRIAÇÃO DO APP ---
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
-# --- 3. CONFIGURAÇÃO DO BANCO DE DADOS (NUVEM OU LOCAL) ---
+# --- 3. CONFIGURAÇÃO DO BANCO DE DADOS ---
 database_url = os.environ.get("DATABASE_URL")
 
 if database_url:
-    # Se estiver no Vercel, usa o link do Supabase
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 else:
-    # Se estiver no seu computador, usa o banco local
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "financas-secret-key-local")
 
+# MELHORIA 1: Prevenção de erro 500 (testa conexões fantasmas e recicla as antigas)
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 300,
+}
+
 csrf = CSRFProtect(app)
 db = SQLAlchemy(app)
 
-# --- MODELOS DE BANCO DE DADOS ---
-# (Daqui para baixo o seu código continua exatamente igual, não precisa mexer)
 
 # --- MODELOS DE BANCO DE DADOS ---
 
@@ -93,7 +99,7 @@ class Movimentacao(db.Model):
     descricao = db.Column(db.String(160), nullable=False)
     categoria = db.Column(db.String(50), nullable=False) 
     valor = db.Column(db.Numeric(12, 2), nullable=False, default=ZERO)
-    data_registro = db.Column(db.Date, nullable=False, default=date.today)
+    data_registro = db.Column(db.Date, nullable=False, default=get_today_br) # MELHORIA 2
 
 class ContaPagar(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -125,7 +131,7 @@ class Investimento(db.Model):
     taxa_rendimento = db.Column(db.String(100), nullable=True)
     valor_aporte = db.Column(db.Numeric(12, 2), nullable=False, default=ZERO)
     valor_atual = db.Column(db.Numeric(12, 2), nullable=False, default=ZERO)
-    data_aporte = db.Column(db.Date, nullable=False, default=date.today)
+    data_aporte = db.Column(db.Date, nullable=False, default=get_today_br) # MELHORIA 2
     meta_id = db.Column(db.Integer, db.ForeignKey('meta_patrimonial.id'), nullable=True)
     resgatado = db.Column(db.Boolean, nullable=False, default=False)
 
@@ -263,7 +269,7 @@ def logout():
 @app.route("/", methods=["GET"])
 @normal_user_required
 def dashboard():
-    hoje = date.today()
+    hoje = get_today_br() # MELHORIA 2
     uid = session["user_id"]
     view_mode = request.args.get("view", "mensal")
     selected_month = int(request.args.get("month", hoje.month))
@@ -471,7 +477,8 @@ def add_receita():
     categoria = request.form.get("categoria", "Salário")
     valor = to_decimal(request.form.get("valor"))
     data_str = request.form.get("data")
-    data_mov = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else date.today()
+    # MELHORIA 2: Fuso horário do Brasil
+    data_mov = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
 
     db.session.add(Movimentacao(user_id=session["user_id"], descricao=descricao, categoria=categoria, valor=valor, data_registro=data_mov))
     db.session.commit()
@@ -605,7 +612,8 @@ def add_despesa_cartao():
     total_parcelas = int(request.form.get("total_parcelas", 1))
 
     cartao = CartaoCredito.query.filter_by(id=cartao_id, user_id=session["user_id"]).first_or_404()
-    data_compra = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else date.today()
+    # MELHORIA 2: Fuso horário do Brasil
+    data_compra = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
     grupo_id = str(uuid.uuid4())[:8] if total_parcelas > 1 else None
     valor_parcela = (valor_total / total_parcelas).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -670,7 +678,8 @@ def add_investimento():
     valor = to_decimal(request.form.get("valor_aporte"))
     data_str = request.form.get("data_aporte")
     meta_id = request.form.get("meta_id")
-    data_ap = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else date.today()
+    # MELHORIA 2: Fuso horário do Brasil
+    data_ap = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
 
     db.session.add(Investimento(
         user_id=session["user_id"], ativo=ativo, tipo=tipo, taxa_rendimento=taxa, valor_aporte=valor, 
@@ -709,7 +718,7 @@ def resgatar_investimento(id):
     inv = Investimento.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
     db.session.add(Movimentacao(
         user_id=session["user_id"], descricao=f"Resgate: {inv.ativo} ({inv.taxa_rendimento})",
-        categoria="Renda Extra", valor=inv.valor_atual, data_registro=date.today()
+        categoria="Renda Extra", valor=inv.valor_atual, data_registro=get_today_br() # MELHORIA 2: Fuso horário do Brasil
     ))
     inv.resgatado = True
     inv.meta_id = None 
@@ -761,10 +770,7 @@ def open_browser():
 with app.app_context():
     db.create_all()
     
-    # Se não houver nenhum usuário no banco, cria o primeiro Admin
     if User.query.count() == 0:
-        # Puxa o usuário e senha lá das configurações do Vercel (ou do .env local)
-        # Se você esquecer de configurar no Vercel, ele usa "admin" e "senha_segura_123" como segurança de emergência
         admin_user = os.environ.get("ADMIN_USERNAME", "admin")
         admin_pass = os.environ.get("ADMIN_PASSWORD", "senha_segura_123")
         
