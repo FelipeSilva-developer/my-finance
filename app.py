@@ -382,6 +382,21 @@ def meus_cartoes():
 def ajuda():
     return render_template("ajuda.html")
 
+# --- NOVA ROTA DE EXPORTAÇÃO PDF ---
+@app.route("/relatorio_pdf/<int:mes>/<int:ano>")
+@normal_user_required
+def relatorio_pdf(mes, ano):
+    uid = session["user_id"]
+    mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, extract('month', Movimentacao.data_registro) == mes, extract('year', Movimentacao.data_registro) == ano).order_by(Movimentacao.data_registro.desc()).all()
+    contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, extract('month', ContaPagar.data_vencimento) == mes, extract('year', ContaPagar.data_vencimento) == ano).order_by(ContaPagar.data_vencimento.asc()).all()
+    
+    total_receitas = sum([to_decimal(m.valor) for m in mov_query])
+    total_despesas = sum([to_decimal(c.valor) for c in contas_query])
+    saldo = total_receitas - total_despesas
+    
+    return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes=mes, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=saldo)
+
+
 # --- ROTAS DO ADMIN ---
 @app.route("/configuracoes", methods=["GET"])
 @admin_required
@@ -528,6 +543,19 @@ def add_conta():
                 pago=False, parcela_atual=num_parcela, total_parcelas=total_parcelas, grupo_recorrencia_id=grupo_id
             )
             db.session.add(nova_conta)
+            
+    elif tipo_lancamento == "assinatura":
+        # Gera parcelas contínuas para os próximos 5 anos (60 meses)
+        grupo_id = "ass_" + str(uuid.uuid4())[:8]
+        for i in range(60):
+            data_venc = adicionar_meses(data_venc_inicial, i)
+            nova_conta = ContaPagar(
+                user_id=session["user_id"], descricao=f"{descricao} (Assinatura)",
+                categoria=categoria, valor=valor_total, data_vencimento=data_venc,
+                pago=False, parcela_atual=i+1, total_parcelas=999, grupo_recorrencia_id=grupo_id
+            )
+            db.session.add(nova_conta)
+            
     else:
         db.session.add(ContaPagar(user_id=session["user_id"], descricao=descricao, categoria=categoria, valor=valor_total, data_vencimento=data_venc_inicial, pago=False))
 
