@@ -23,15 +23,13 @@ ZERO = Decimal("0.00")
 def get_today_br():
     return datetime.now(pytz.timezone('America/Sao_Paulo')).date()
 
-# --- CONFIGURAÇÃO DE PASTAS ---
 if getattr(sys, 'frozen', False):
     BASE_DIR = Path(sys.executable).parent
     DATABASE_PATH = BASE_DIR / "financeiro.db"
     template_dir = os.path.join(sys._MEIPASS, 'templates')
     static_dir = os.path.join(sys._MEIPASS, 'static')
     env_path = os.path.join(sys._MEIPASS, '.env')
-    if os.path.exists(env_path):
-        load_dotenv(env_path)
+    if os.path.exists(env_path): load_dotenv(env_path)
 else:
     BASE_DIR = BASE_DIR_PATH
     DATABASE_PATH = BASE_DIR / "financeiro.db"
@@ -39,10 +37,8 @@ else:
     static_dir = os.path.join(BASE_DIR, 'static')
     load_dotenv()
 
-# --- CRIAÇÃO DO APP ---
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
-# --- SEGURANÇA E TIMEOUT DE SESSÃO ---
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "financas-secret-key-local")
 
@@ -55,15 +51,11 @@ else:
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_pre_ping": True,
-    "pool_recycle": 300,
-}
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = { "pool_pre_ping": True, "pool_recycle": 300 }
 
 csrf = CSRFProtect(app)
 db = SQLAlchemy(app)
 
-# --- MODELOS DE BANCO DE DADOS ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -174,9 +166,7 @@ class FaturaVirtual:
             _, last_day = calendar.monthrange(ano, mes)
             self.data_vencimento = date(ano, mes, min(dia_vencimento, last_day))
 
-# --- FUNÇÕES AUXILIARES ---
 def to_decimal(value: object) -> Decimal:
-    """ Converte a máscara 1.500,00 ou 1500.00 para Decimal """
     if value in (None, ""): return ZERO
     val_str = str(value).replace("R$", "").replace(" ", "")
     if "," in val_str:
@@ -206,33 +196,26 @@ def calcular_fatura(data_compra: date, dia_fechamento: int, parcela_n: int) -> t
         dt = adicionar_meses(dt, 1)
     return dt.month, dt.year
 
-# --- DECORADORES ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
-            return redirect(url_for("login"))
+        if "user_id" not in session: return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated_function
 
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
-            return redirect(url_for("login"))
-        if not session.get("is_admin"):
-            flash("Acesso restrito a Administradores.", "error")
-            return redirect(url_for("dashboard"))
+        if "user_id" not in session: return redirect(url_for("login"))
+        if not session.get("is_admin"): return redirect(url_for("dashboard"))
         return f(*args, **kwargs)
     return decorated_function
 
 def normal_user_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
-            return redirect(url_for("login"))
-        if session.get("is_admin"):
-            return redirect(url_for("configuracoes"))
+        if "user_id" not in session: return redirect(url_for("login"))
+        if session.get("is_admin"): return redirect(url_for("configuracoes"))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -240,21 +223,18 @@ def normal_user_required(f):
 def sw():
     return app.send_static_file('sw.js')
 
-# --- ROTAS DE AUTENTICAÇÃO ---
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form.get("username").strip()
         senha = request.form.get("senha")
         user = User.query.filter_by(username=username).first()
-        
         if user and check_password_hash(user.password_hash, senha):
-            session.permanent = True # Ativa a expiração de 30 minutos
+            session.permanent = True
             session["user_id"] = user.id
             session["username"] = user.username
             session["is_admin"] = user.is_admin
-            if user.is_admin:
-                return redirect(url_for("configuracoes"))
+            if user.is_admin: return redirect(url_for("configuracoes"))
             return redirect(url_for("dashboard"))
         else:
             flash("Usuário ou palavra-passe incorretos.", "error")
@@ -265,7 +245,6 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
-# --- ROTAS DA APLICAÇÃO ---
 @app.route("/", methods=["GET"])
 @normal_user_required
 def dashboard():
@@ -277,6 +256,7 @@ def dashboard():
     current_tab = request.args.get("tab", "tab-visao")
 
     categorias_despesa = Categoria.query.filter_by(tipo='despesa').order_by(Categoria.nome.asc()).all()
+    categorias_receita = Categoria.query.filter_by(tipo='receita').order_by(Categoria.nome.asc()).all()
     cartoes = CartaoCredito.query.filter_by(user_id=uid).all()
 
     if view_mode == "mensal":
@@ -312,22 +292,18 @@ def dashboard():
     itens_cronograma = list(contas) + faturas_virtuais
     itens_cronograma.sort(key=lambda x: x.data_vencimento)
 
-    # 1. ALERTAS DE CONTAS VENCIDAS NO TOPO
     alertas = []
     vencidas = sum(1 for c in itens_cronograma if not c.pago and c.data_vencimento < hoje)
     vencendo_hoje = sum(1 for c in itens_cronograma if not c.pago and c.data_vencimento == hoje)
     if vencidas > 0: alertas.append(f"🚨 Atenção: Tem {vencidas} conta(s) em atraso!")
     if vencendo_hoje > 0: alertas.append(f"⚠️ Lembrete: Tem {vencendo_hoje} conta(s) a vencer hoje!")
 
-    # 2. ANÁLISE DE USO DOS CARTÕES
     cartoes_info = []
     for c in cartoes:
         despesas_pendentes = DespesaCartao.query.filter_by(cartao_id=c.id, pago=False).all()
         uso = sum([to_decimal(d.valor) for d in despesas_pendentes])
         pct = (uso / c.limite * 100) if c.limite > 0 else 0
-        cartoes_info.append({
-            'nome': c.nome, 'limite': c.limite, 'uso': uso, 'pct': float(pct.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
-        })
+        cartoes_info.append({ 'nome': c.nome, 'limite': c.limite, 'uso': uso, 'pct': float(pct.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)) })
 
     metas_progresso = []
     for meta in metas_db:
@@ -377,8 +353,7 @@ def dashboard():
             anual_receitas[m-1] = float(sum([to_decimal(x.valor) for x in m_mov]))
             anual_despesas[m-1] = float(sum([to_decimal(x.valor) for x in m_ct]) + sum([to_decimal(x.valor) for x in m_dc]))
 
-    meses_nomes = {1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho", 
-                   7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"}
+    meses_nomes = {1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"}
 
     return render_template(
         "dashboard.html",
@@ -388,7 +363,7 @@ def dashboard():
         saldo_consolidado=saldo_consolidado, patrimonio_total_acumulado=patrimonio_total_acumulado,
         chart_labels=chart_labels, chart_data=chart_data, view_mode=view_mode,
         selected_month=selected_month, selected_year=selected_year, meses_nomes=meses_nomes, hoje=hoje,
-        categorias_despesa=categorias_despesa, cartoes=cartoes, despesas_cartao=despesas_cartao, 
+        categorias_despesa=categorias_despesa, categorias_receita=categorias_receita, cartoes=cartoes, despesas_cartao=despesas_cartao, 
         current_tab=current_tab, anual_receitas=anual_receitas, anual_despesas=anual_despesas, metas=metas_db
     )
 
@@ -403,7 +378,6 @@ def meus_cartoes():
 def ajuda():
     return render_template("ajuda.html")
 
-# --- PERFIL DO UTILIZADOR ---
 @app.route("/perfil", methods=["GET", "POST"])
 @normal_user_required
 def perfil():
@@ -422,7 +396,6 @@ def perfil():
             session["username"] = user.username
             flash("Perfil atualizado com sucesso!", "success")
         return redirect(url_for("perfil"))
-        
     return render_template("perfil.html", user=user)
 
 @app.route("/relatorio_pdf/<int:mes>/<int:ano>")
@@ -431,20 +404,18 @@ def relatorio_pdf(mes, ano):
     uid = session["user_id"]
     mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, extract('month', Movimentacao.data_registro) == mes, extract('year', Movimentacao.data_registro) == ano).order_by(Movimentacao.data_registro.desc()).all()
     contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, extract('month', ContaPagar.data_vencimento) == mes, extract('year', ContaPagar.data_vencimento) == ano).order_by(ContaPagar.data_vencimento.asc()).all()
-    
     total_receitas = sum([to_decimal(m.valor) for m in mov_query])
     total_despesas = sum([to_decimal(c.valor) for c in contas_query])
     saldo = total_receitas - total_despesas
-    
     return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes=mes, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=saldo)
-
 
 @app.route("/configuracoes", methods=["GET"])
 @admin_required
 def configuracoes():
     categorias_despesa = Categoria.query.filter_by(tipo='despesa').order_by(Categoria.nome.asc()).all()
+    categorias_receita = Categoria.query.filter_by(tipo='receita').order_by(Categoria.nome.asc()).all()
     usuarios = User.query.all()
-    return render_template("config.html", categorias_despesa=categorias_despesa, usuarios=usuarios)
+    return render_template("config.html", categorias_despesa=categorias_despesa, categorias_receita=categorias_receita, usuarios=usuarios)
 
 @app.route("/admin/user/add", methods=["POST"])
 @admin_required
@@ -457,8 +428,7 @@ def add_user():
             db.session.add(User(username=username, password_hash=generate_password_hash(senha), is_admin=is_admin))
             db.session.commit()
             flash("Usuário criado com sucesso!", "success")
-        else:
-            flash("Este nome de usuário já existe.", "error")
+        else: flash("Este nome de usuário já existe.", "error")
     return redirect(url_for("configuracoes"))
 
 @app.route("/admin/user/<int:id>/edit", methods=["POST"])
@@ -478,7 +448,6 @@ def delete_user(id):
     if id == session["user_id"]:
         flash("Operação negada. Você não pode excluir a sua própria conta logada.", "error")
         return redirect(url_for("configuracoes"))
-    
     user = User.query.get_or_404(id)
     db.session.delete(user)
     db.session.commit()
@@ -489,8 +458,9 @@ def delete_user(id):
 @admin_required
 def add_categoria():
     nome = request.form.get("nome", "").strip()
-    if nome and not Categoria.query.filter_by(nome=nome, tipo='despesa').first():
-        db.session.add(Categoria(nome=nome, tipo='despesa'))
+    tipo = request.form.get("tipo", "despesa")
+    if nome and not Categoria.query.filter_by(nome=nome, tipo=tipo).first():
+        db.session.add(Categoria(nome=nome, tipo=tipo))
         db.session.commit()
     return redirect(url_for("configuracoes"))
 
@@ -526,11 +496,10 @@ def delete_orcamento(id):
 @normal_user_required
 def add_receita():
     descricao = request.form.get("descricao", "").strip()
-    categoria = request.form.get("categoria", "Salário")
+    categoria = request.form.get("categoria")
     valor = to_decimal(request.form.get("valor"))
     data_str = request.form.get("data")
     data_mov = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
-
     db.session.add(Movimentacao(user_id=session["user_id"], descricao=descricao, categoria=categoria, valor=valor, data_registro=data_mov))
     db.session.commit()
     return redirect(url_for("dashboard", month=data_mov.month, year=data_mov.year, tab="tab-visao"))
@@ -593,10 +562,8 @@ def add_conta():
                 pago=False, parcela_atual=i+1, total_parcelas=999, grupo_recorrencia_id=grupo_id
             )
             db.session.add(nova_conta)
-            
     else:
         db.session.add(ContaPagar(user_id=session["user_id"], descricao=descricao, categoria=categoria, valor=valor_total, data_vencimento=data_venc_inicial, pago=False))
-
     db.session.commit()
     return redirect(url_for("dashboard", month=data_venc_inicial.month, year=data_venc_inicial.year, tab="tab-cronograma"))
 
@@ -737,11 +704,7 @@ def add_investimento():
     data_str = request.form.get("data_aporte")
     meta_id = request.form.get("meta_id")
     data_ap = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
-
-    db.session.add(Investimento(
-        user_id=session["user_id"], ativo=ativo, tipo=tipo, taxa_rendimento=taxa, valor_aporte=valor, 
-        valor_atual=valor, data_aporte=data_ap, meta_id=int(meta_id) if meta_id else None
-    ))
+    db.session.add(Investimento(user_id=session["user_id"], ativo=ativo, tipo=tipo, taxa_rendimento=taxa, valor_aporte=valor, valor_atual=valor, data_aporte=data_ap, meta_id=int(meta_id) if meta_id else None))
     db.session.commit()
     return redirect(url_for("dashboard", month=data_ap.month, year=data_ap.year, tab="tab-patrimonio"))
 
@@ -773,10 +736,7 @@ def update_investimento(id):
 @normal_user_required
 def resgatar_investimento(id):
     inv = Investimento.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    db.session.add(Movimentacao(
-        user_id=session["user_id"], descricao=f"Resgate: {inv.ativo} ({inv.taxa_rendimento})",
-        categoria="Renda Extra", valor=inv.valor_atual, data_registro=get_today_br()
-    ))
+    db.session.add(Movimentacao(user_id=session["user_id"], descricao=f"Resgate: {inv.ativo} ({inv.taxa_rendimento})", categoria="Renda Extra", valor=inv.valor_atual, data_registro=get_today_br()))
     inv.resgatado = True
     inv.meta_id = None 
     db.session.commit()
@@ -820,8 +780,7 @@ def delete_meta(id):
     db.session.commit()
     return redirect(url_for("dashboard", tab="tab-patrimonio"))
 
-def open_browser():
-    webbrowser.open("http://127.0.0.1:5005")
+def open_browser(): webbrowser.open("http://127.0.0.1:5005")
 
 with app.app_context():
     db.create_all()
@@ -833,7 +792,8 @@ with app.app_context():
         db.session.commit()
         
     if Categoria.query.count() == 0:
-        defaults = [('Moradia', 'despesa'), ('Transporte', 'despesa'), ('Lazer', 'despesa'), ('Outros', 'despesa')]
+        defaults = [('Moradia', 'despesa'), ('Transporte', 'despesa'), ('Lazer', 'despesa'), ('Outros', 'despesa'), 
+                    ('Salário', 'receita'), ('Renda Extra', 'receita'), ('Investimentos', 'receita')]
         for n, t in defaults: db.session.add(Categoria(nome=n, tipo=t))
         db.session.commit()
 

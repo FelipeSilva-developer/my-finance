@@ -7,27 +7,47 @@
             <p class="eyebrow">Painel Central</p>
             <h1>Administração Global</h1>
         </div>
-        <a href="{{ url_for('logout') }}" class="ghost-button danger-button" style="text-decoration: none; padding: 10px 16px;">Sair do Sistema</a>
+        <a href="{{ url_for('dashboard') }}" class="ghost-button" style="text-decoration: none; padding: 10px 16px;">Voltar</a>
     </div>
 </section>
 
 <section class="dashboard-grid" style="margin-top: 22px;">
     <article class="panel">
-        <div class="panel-heading"><h2>Gerir Categorias Globais</h2></div>
-        <p style="color: var(--muted); font-size: 0.9rem; margin-top: -10px; margin-bottom: 16px;">Estas categorias ficarão visíveis para todos os usuários.</p>
+        <div class="panel-heading"><h2>Categorias de Despesa</h2></div>
         <form method="post" action="{{ url_for('add_categoria') }}" class="stack-form" style="margin-bottom:14px;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-            <label>Nova Categoria de Despesa <input type="text" name="nome" placeholder="Ex: Pet, Saúde..." required></label>
-            <button type="submit" class="ghost-button">Adicionar Categoria</button>
+            <input type="hidden" name="tipo" value="despesa"/>
+            <label>Nova Categoria <input type="text" name="nome" placeholder="Ex: Pet, Saúde..." required></label>
+            <button type="submit" class="ghost-button">Adicionar</button>
         </form>
         
-        <div style="max-height: 250px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:8px; margin-top: 16px;">
+        <div style="max-height: 200px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:8px;">
             {% for c in categorias_despesa %}
             <span class="counter-pill" style="border-color:var(--coral); display:flex; align-items:center; gap: 6px;">
                 {{ c.nome }} 
                 <form method="post" action="{{ url_for('delete_categoria', id=c.id) }}" style="display:inline; margin: 0;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button style="border:none; background:none; color:var(--coral); cursor:pointer; font-weight: bold; padding: 0;">x</button>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button style="border:none; background:none; color:var(--coral); cursor:pointer; font-weight: bold; padding: 0;">x</button>
+                </form>
+            </span>
+            {% endfor %}
+        </div>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading"><h2>Categorias de Receita</h2></div>
+        <form method="post" action="{{ url_for('add_categoria') }}" class="stack-form" style="margin-bottom:14px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <input type="hidden" name="tipo" value="receita"/>
+            <label>Nova Origem <input type="text" name="nome" placeholder="Ex: Vendas Online..." required></label>
+            <button type="submit" class="ghost-button" style="color: var(--green); border-color: var(--green);">Adicionar</button>
+        </form>
+        
+        <div style="max-height: 200px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:8px;">
+            {% for c in categorias_receita %}
+            <span class="counter-pill" style="border-color:var(--green); display:flex; align-items:center; gap: 6px;">
+                {{ c.nome }} 
+                <form method="post" action="{{ url_for('delete_categoria', id=c.id) }}" style="display:inline; margin: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button style="border:none; background:none; color:var(--green); cursor:pointer; font-weight: bold; padding: 0;">x</button>
                 </form>
             </span>
             {% endfor %}
@@ -35,41 +55,29 @@
     </article>
 
     <article class="panel" style="grid-column: 1 / -1;">
-        <div class="panel-heading"><h2>Gestão de Contas (Multi-Tenant)</h2></div>
-        
+        <div class="panel-heading"><h2>Gestão de Contas</h2></div>
         <form method="post" action="{{ url_for('add_user') }}" class="stack-form" style="display: grid; grid-template-columns: 1fr 1fr 100px 150px; gap: 14px; align-items: end;">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-            <label>Novo Usuário <input type="text" name="username" placeholder="Login do usuário" required></label>
-            <label>Senha Inicial <input type="text" name="senha" placeholder="Palavra-passe provisória" required></label>
+            <label>Novo Usuário <input type="text" name="username" required></label>
+            <label>Senha Inicial <input type="text" name="senha" required></label>
             <label style="display: flex; gap: 8px; align-items: center; height: 46px;"><input type="checkbox" name="is_admin" value="sim"> É Admin?</label>
             <button type="submit" class="primary-button" style="height: 46px;">Criar Conta</button>
         </form>
 
         <div class="table-wrap" style="margin-top: 24px;">
             <table>
-                <thead><tr><th>ID</th><th>Username</th><th>Nível de Acesso</th><th>Gerir Segurança</th><th>Zona de Perigo</th></tr></thead>
+                <thead><tr><th>Username</th><th>Nível</th><th>Ações</th></tr></thead>
                 <tbody>
                     {% for u in usuarios %}
                     <tr>
-                        <td>{{ u.id }}</td>
                         <td><strong>{{ u.username }}</strong></td>
-                        <td>{% if u.is_admin %}<span style="color:var(--gold); font-weight:bold;">Administrador</span>{% else %}Usuário Comum{% endif %}</td>
-                        <td>
-                            <form method="post" action="{{ url_for('edit_user', id=u.id) }}" style="display: flex; gap: 8px;">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <input type="text" name="senha" placeholder="Nova Senha" style="width: 150px; padding: 6px; font-size: 0.9rem;" required>
-                                <button type="submit" class="ghost-button" style="padding: 6px 10px; font-size: 0.8rem;">Alterar Senha</button>
-                            </form>
-                        </td>
+                        <td>{% if u.is_admin %}Administrador{% else %}Comum{% endif %}</td>
                         <td>
                             {% if u.id != session.user_id %}
-                            <form method="post" action="{{ url_for('delete_user', id=u.id) }}" onsubmit="return confirm('ATENÇÃO: Isso apagará TODOS os dados financeiros deste usuário sem chance de recuperação. Continuar?');">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <button type="submit" class="ghost-button danger-button" style="padding: 6px 10px; font-size: 0.8rem;">Excluir Conta</button>
+                            <form method="post" action="{{ url_for('delete_user', id=u.id) }}" style="display:inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="ghost-button danger-button">Excluir Conta</button>
                             </form>
-                            {% else %}
-                            <span style="color: var(--muted); font-size: 0.8rem;">Conta Atual</span>
-                            {% endif %}
+                            {% else %}Conta Atual{% endif %}
                         </td>
                     </tr>
                     {% endfor %}

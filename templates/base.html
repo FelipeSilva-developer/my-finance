@@ -2,18 +2,15 @@
 <html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Controle Financeiro</title>
-    
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
-
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#1a5caf">
     
     <style>
-        /* CSS do Modo Escuro */
         body.dark-mode { background: #121212; color: #e0e0e0; }
         body.dark-mode .container, body.dark-mode .panel, body.dark-mode .hero-card, body.dark-mode .metric-card, body.dark-mode .help-section { background: #1e1e1e; box-shadow: none; border: 1px solid #333; color: #e0e0e0; }
         body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background-color: #333; color: #fff; border: 1px solid #555; }
@@ -24,15 +21,25 @@
         body.dark-mode .ghost-button { background: #333; color: #e0e0e0; border-color: #555; }
         body.dark-mode .counter-pill { background: #333; border-color: #555; color: #ccc; }
         body.dark-mode dialog { background: #1e1e1e; color: #e0e0e0; border: 1px solid #333; }
+        body.dark-mode .bottom-nav { background: #1e1e1e; border-top: 1px solid #333; }
+        body.dark-mode .nav-item { color: #888; }
+        body.dark-mode .nav-item.active { color: #4fa3ff; }
         
-        /* Botões Flutuantes */
-        .btn-flutuante-container { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
+        .btn-flutuante-container { position: fixed; bottom: 85px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
         .btn-flutuante { background-color: #1a5caf; color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; text-decoration: none; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: 0.2s; cursor: pointer; border: none; font-weight: bold; }
-        .btn-flutuante:hover { transform: scale(1.1); background-color: #12407a; color: white; }
         .btn-tema { background-color: #333; font-size: 20px; }
+
+        /* Banner de Instalação Mobile */
+        .install-banner {
+            display: none; background: linear-gradient(135deg, #1a5caf, #0f8a63); color: white; 
+            padding: 12px; text-align: center; font-weight: bold; cursor: pointer; z-index: 9999;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); justify-content: center; align-items: center; gap: 8px;
+        }
     </style>
 </head>
 <body>
+    <div id="install-app-btn" class="install-banner" onclick="installApp()">📲 Clique aqui para Instalar a App no Telemóvel</div>
+
     <main class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
@@ -48,16 +55,33 @@
     {% if session.get('user_id') %}
     <div class="btn-flutuante-container">
         <button id="theme-toggle" class="btn-flutuante btn-tema" title="Alternar Modo Escuro">🌙</button>
-        <a href="{{ url_for('ajuda') }}" class="btn-flutuante" title="Como usar o sistema?">?</a>
+        <a href="{{ url_for('ajuda') }}" class="btn-flutuante" title="Ajuda">?</a>
     </div>
     {% endif %}
 
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); });
+        // Lógica de Instalação da PWA (Mobile)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('install-app-btn').style.display = 'flex';
+        });
+
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        document.getElementById('install-app-btn').style.display = 'none';
+                    }
+                    deferredPrompt = null;
+                });
+            }
         }
 
-        // 1. MÁSCARA DE MOEDA INTELIGENTE
+        if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); }); }
+
         document.addEventListener('input', function (e) {
             if (e.target.classList.contains('currency-mask')) {
                 let value = e.target.value.replace(/\D/g, '');
@@ -69,35 +93,21 @@
             }
         });
 
-        // 2. PROTEÇÃO CONTRA DUPLO CLIQUE (SEGURANÇA)
         document.querySelectorAll('form').forEach(form => {
             form.addEventListener('submit', function() {
                 const btn = form.querySelector('button[type="submit"]');
-                if (btn) {
-                    btn.style.opacity = '0.7';
-                    btn.innerHTML = 'A processar...';
-                    setTimeout(() => btn.disabled = true, 10);
-                }
+                if (btn) { btn.style.opacity = '0.7'; btn.innerHTML = 'A processar...'; setTimeout(() => btn.disabled = true, 10); }
             });
         });
 
-        // 3. MODO ESCURO
         const toggle = document.getElementById('theme-toggle');
         const body = document.body;
-        if (localStorage.getItem('theme') === 'dark') {
-            body.classList.add('dark-mode');
-            if(toggle) toggle.innerText = '☀️';
-        }
+        if (localStorage.getItem('theme') === 'dark') { body.classList.add('dark-mode'); if(toggle) toggle.innerText = '☀️'; }
         if(toggle) {
             toggle.addEventListener('click', () => {
                 body.classList.toggle('dark-mode');
-                if (body.classList.contains('dark-mode')) {
-                    localStorage.setItem('theme', 'dark');
-                    toggle.innerText = '☀️';
-                } else {
-                    localStorage.setItem('theme', 'light');
-                    toggle.innerText = '🌙';
-                }
+                if (body.classList.contains('dark-mode')) { localStorage.setItem('theme', 'dark'); toggle.innerText = '☀️'; } 
+                else { localStorage.setItem('theme', 'light'); toggle.innerText = '🌙'; }
             });
         }
     </script>
