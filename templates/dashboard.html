@@ -34,7 +34,7 @@
             {% if view_mode == 'mensal' %}
             <a href="{{ url_for('relatorio_pdf', mes=selected_month, ano=selected_year) }}" target="_blank" class="ghost-button" style="text-decoration: none; color: #1a5caf; border-color: #1a5caf; font-weight: bold;">📥 Baixar PDF</a>
             {% endif %}
-            <a href="{{ url_for('perfil') }}" class="ghost-button" style="text-decoration: none;">👤 O meu Perfil</a>
+            <a href="{{ url_for('perfil') }}" class="ghost-button" style="text-decoration: none;">👤 Meu Perfil</a>
             <a href="{{ url_for('logout') }}" class="ghost-button danger-button" style="text-decoration: none;">Sair</a>
         </div>
     </div>
