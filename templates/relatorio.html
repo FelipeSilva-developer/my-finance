@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório Financeiro - {{ "%02d"|format(mes) }}/{{ ano }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; margin: 40px; }
+        .cabecalho { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+        .resumo { display: flex; justify-content: space-between; background: #f0f0f0; padding: 20px; border-radius: 8px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; margin-bottom: 40px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f8f9fa; }
+        .valor { text-align: right; }
+        .positivo { color: green; }
+        .negativo { color: red; }
+        @media print {
+            body { margin: 0; }
+            .resumo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body onload="window.print()">
+    
+    <div class="cabecalho">
+        <h1>Relatório Consolidado</h1>
+        <p>Mês de Referência: {{ "%02d"|format(mes) }}/{{ ano }}</p>
+    </div>
+
+    <div class="resumo">
+        <span>Receitas: <span class="positivo">{{ total_receitas | brl }}</span></span>
+        <span>Despesas: <span class="negativo">{{ total_despesas | brl }}</span></span>
+        <span>Saldo do Mês: {{ saldo | brl }}</span>
+    </div>
+
+    <h3>Entradas (Receitas)</h3>
+    <table>
+        <tr><th>Data</th><th>Descrição</th><th>Categoria</th><th class="valor">Valor</th></tr>
+        {% for r in receitas %}
+        <tr><td>{{ r.data_registro.strftime('%d/%m/%Y') }}</td><td>{{ r.descricao }}</td><td>{{ r.categoria }}</td><td class="valor positivo">{{ r.valor | brl }}</td></tr>
+        {% else %}
+        <tr><td colspan="4" style="text-align: center;">Nenhuma receita registada neste mês.</td></tr>
+        {% endfor %}
+    </table>
+
+    <h3>Saídas (Contas a Pagar)</h3>
+    <table>
+        <tr><th>Vencimento</th><th>Descrição</th><th>Status</th><th class="valor">Valor</th></tr>
+        {% for d in despesas %}
+        <tr><td>{{ d.data_vencimento.strftime('%d/%m/%Y') }}</td><td>{{ d.descricao }}</td><td>{{ 'Pago' if d.pago else 'Pendente' }}</td><td class="valor negativo">{{ d.valor | brl }}</td></tr>
+        {% else %}
+        <tr><td colspan="4" style="text-align: center;">Nenhuma despesa registada neste mês.</td></tr>
+        {% endfor %}
+    </table>
+
+</body>
+</html>
