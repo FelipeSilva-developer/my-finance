@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 import os
 import sys
@@ -29,7 +29,6 @@ if getattr(sys, 'frozen', False):
     DATABASE_PATH = BASE_DIR / "financeiro.db"
     template_dir = os.path.join(sys._MEIPASS, 'templates')
     static_dir = os.path.join(sys._MEIPASS, 'static')
-    
     env_path = os.path.join(sys._MEIPASS, '.env')
     if os.path.exists(env_path):
         load_dotenv(env_path)
@@ -43,9 +42,11 @@ else:
 # --- CRIAÇÃO DO APP ---
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
-# --- CONFIGURAÇÃO DO BANCO DE DADOS ---
-database_url = os.environ.get("DATABASE_URL")
+# --- SEGURANÇA E TIMEOUT DE SESSÃO ---
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(minutes=30)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "financas-secret-key-local")
 
+database_url = os.environ.get("DATABASE_URL")
 if database_url:
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
@@ -54,9 +55,6 @@ else:
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DATABASE_PATH.as_posix()}"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "financas-secret-key-local")
-
-# Prevenção de erro 500 no Vercel
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
@@ -64,7 +62,6 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 
 csrf = CSRFProtect(app)
 db = SQLAlchemy(app)
-
 
 # --- MODELOS DE BANCO DE DADOS ---
 class User(db.Model):
@@ -179,13 +176,22 @@ class FaturaVirtual:
 
 # --- FUNÇÕES AUXILIARES ---
 def to_decimal(value: object) -> Decimal:
+    """ Converte a máscara 1.500,00 ou 1500.00 para Decimal """
     if value in (None, ""): return ZERO
-    return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    val_str = str(value).replace("R$", "").replace(" ", "")
+    if "," in val_str:
+        val_str = val_str.replace(".", "").replace(",", ".")
+    return Decimal(val_str).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 @app.template_filter("brl")
 def brl_filter(value) -> str:
     dec_val = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     return "R$ " + f"{dec_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+@app.template_filter("money_input")
+def money_input_filter(value) -> str:
+    dec_val = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return f"{dec_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def adicionar_meses(orig_date: date, months: int) -> date:
     target_month = orig_date.month + months
@@ -230,7 +236,6 @@ def normal_user_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# --- ROTA PARA O SERVICE WORKER (PWA) ---
 @app.route('/sw.js')
 def sw():
     return app.send_static_file('sw.js')
@@ -244,6 +249,7 @@ def login():
         user = User.query.filter_by(username=username).first()
         
         if user and check_password_hash(user.password_hash, senha):
+            session.permanent = True # Ativa a expiração de 30 minutos
             session["user_id"] = user.id
             session["username"] = user.username
             session["is_admin"] = user.is_admin
@@ -259,8 +265,7 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
-# --- ROTAS DA APLICAÇÃO (USUÁRIOS COMUNS) ---
-
+# --- ROTAS DA APLICAÇÃO ---
 @app.route("/", methods=["GET"])
 @normal_user_required
 def dashboard():
@@ -306,6 +311,23 @@ def dashboard():
     
     itens_cronograma = list(contas) + faturas_virtuais
     itens_cronograma.sort(key=lambda x: x.data_vencimento)
+
+    # 1. ALERTAS DE CONTAS VENCIDAS NO TOPO
+    alertas = []
+    vencidas = sum(1 for c in itens_cronograma if not c.pago and c.data_vencimento < hoje)
+    vencendo_hoje = sum(1 for c in itens_cronograma if not c.pago and c.data_vencimento == hoje)
+    if vencidas > 0: alertas.append(f"🚨 Atenção: Tem {vencidas} conta(s) em atraso!")
+    if vencendo_hoje > 0: alertas.append(f"⚠️ Lembrete: Tem {vencendo_hoje} conta(s) a vencer hoje!")
+
+    # 2. ANÁLISE DE USO DOS CARTÕES
+    cartoes_info = []
+    for c in cartoes:
+        despesas_pendentes = DespesaCartao.query.filter_by(cartao_id=c.id, pago=False).all()
+        uso = sum([to_decimal(d.valor) for d in despesas_pendentes])
+        pct = (uso / c.limite * 100) if c.limite > 0 else 0
+        cartoes_info.append({
+            'nome': c.nome, 'limite': c.limite, 'uso': uso, 'pct': float(pct.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+        })
 
     metas_progresso = []
     for meta in metas_db:
@@ -362,7 +384,7 @@ def dashboard():
         "dashboard.html",
         movimentacoes=movimentacoes, itens_cronograma=itens_cronograma, carteira_ativa=carteira_ativa,
         metas_progresso=metas_progresso, orcamentos_progresso=orcamentos_progresso, total_receitas=total_receitas, total_investido=total_investido_mes,
-        total_contas_pendentes=total_contas_pendentes, total_contas_pagas=total_contas_pagas,
+        total_contas_pendentes=total_contas_pendentes, total_contas_pagas=total_contas_pagas, alertas=alertas, cartoes_info=cartoes_info,
         saldo_consolidado=saldo_consolidado, patrimonio_total_acumulado=patrimonio_total_acumulado,
         chart_labels=chart_labels, chart_data=chart_data, view_mode=view_mode,
         selected_month=selected_month, selected_year=selected_year, meses_nomes=meses_nomes, hoje=hoje,
@@ -376,13 +398,33 @@ def meus_cartoes():
     cartoes = CartaoCredito.query.filter_by(user_id=session["user_id"]).all()
     return render_template("meus_cartoes.html", cartoes=cartoes)
 
-# --- ROTA DE AJUDA ---
 @app.route("/ajuda", methods=["GET"])
 @normal_user_required
 def ajuda():
     return render_template("ajuda.html")
 
-# --- NOVA ROTA DE EXPORTAÇÃO PDF ---
+# --- PERFIL DO UTILIZADOR ---
+@app.route("/perfil", methods=["GET", "POST"])
+@normal_user_required
+def perfil():
+    user = User.query.get(session["user_id"])
+    if request.method == "POST":
+        novo_nome = request.form.get("username").strip()
+        nova_senha = request.form.get("senha")
+        
+        if novo_nome != user.username and User.query.filter_by(username=novo_nome).first():
+            flash("Este nome de utilizador já está em uso.", "error")
+        else:
+            user.username = novo_nome
+            if nova_senha:
+                user.password_hash = generate_password_hash(nova_senha)
+            db.session.commit()
+            session["username"] = user.username
+            flash("Perfil atualizado com sucesso!", "success")
+        return redirect(url_for("perfil"))
+        
+    return render_template("perfil.html", user=user)
+
 @app.route("/relatorio_pdf/<int:mes>/<int:ano>")
 @normal_user_required
 def relatorio_pdf(mes, ano):
@@ -397,7 +439,6 @@ def relatorio_pdf(mes, ano):
     return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes=mes, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=saldo)
 
 
-# --- ROTAS DO ADMIN ---
 @app.route("/configuracoes", methods=["GET"])
 @admin_required
 def configuracoes():
@@ -461,7 +502,6 @@ def delete_categoria(id):
     db.session.commit()
     return redirect(url_for("configuracoes"))
 
-# --- ROTAS DE ORÇAMENTO MENSAL ---
 @app.route("/orcamento/add", methods=["POST"])
 @normal_user_required
 def add_orcamento():
@@ -482,7 +522,6 @@ def delete_orcamento(id):
     db.session.commit()
     return redirect(url_for("dashboard", tab="tab-visao"))
 
-# --- ROTAS DE FLUXO DE CAIXA (USUÁRIOS COMUNS) ---
 @app.route("/receita/add", methods=["POST"])
 @normal_user_required
 def add_receita():
@@ -545,7 +584,6 @@ def add_conta():
             db.session.add(nova_conta)
             
     elif tipo_lancamento == "assinatura":
-        # Gera parcelas contínuas para os próximos 5 anos (60 meses)
         grupo_id = "ass_" + str(uuid.uuid4())[:8]
         for i in range(60):
             data_venc = adicionar_meses(data_venc_inicial, i)
@@ -593,7 +631,6 @@ def delete_conta(conta_id):
     db.session.commit()
     return redirect(url_for("dashboard", month=m, year=y, tab='tab-cronograma'))
 
-# --- ROTAS DE GESTÃO DE CARTÕES E DESPESAS (USUÁRIOS COMUNS) ---
 @app.route("/cartao/add", methods=["POST"])
 @normal_user_required
 def add_cartao():
@@ -690,7 +727,6 @@ def toggle_fatura(cartao_id, mes, ano):
         db.session.commit()
     return redirect(url_for("dashboard", month=mes, year=ano, tab="tab-cronograma"))
 
-# --- ROTAS DE INVESTIMENTOS E METAS (USUÁRIOS COMUNS) ---
 @app.route("/investimento/add", methods=["POST"])
 @normal_user_required
 def add_investimento():
@@ -787,14 +823,11 @@ def delete_meta(id):
 def open_browser():
     webbrowser.open("http://127.0.0.1:5005")
 
-# Cria as tabelas e o Admin inicial através de Variáveis de Ambiente
 with app.app_context():
     db.create_all()
-    
     if User.query.count() == 0:
         admin_user = os.environ.get("ADMIN_USERNAME", "admin")
         admin_pass = os.environ.get("ADMIN_PASSWORD", "senha_segura_123")
-        
         admin = User(username=admin_user, password_hash=generate_password_hash(admin_pass), is_admin=True)
         db.session.add(admin)
         db.session.commit()

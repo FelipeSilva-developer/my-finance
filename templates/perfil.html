@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2>👤 O meu Perfil</h2>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Voltar ao Início</a>
+</div>
+
+<div class="panel" style="max-width: 500px; margin: 0 auto; margin-top: 40px;">
+    <div class="panel-heading">
+        <h2>Atualizar Dados de Acesso</h2>
+    </div>
+    <form method="post" action="{{ url_for('perfil') }}" class="stack-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        
+        <label>Nome de Utilizador
+            <input type="text" name="username" value="{{ user.username }}" required>
+        </label>
+        
+        <label>Nova Palavra-passe
+            <input type="password" name="senha" placeholder="Deixe em branco para não alterar">
+        </label>
+        
+        <button type="submit" class="primary-button" style="margin-top: 20px;">Salvar Alterações</button>
+    </form>
+</div>
+{% endblock %}
