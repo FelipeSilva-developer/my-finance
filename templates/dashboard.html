@@ -37,6 +37,11 @@
                     </select>
                 </form>
             </nav>
+            
+            {% if view_mode == 'mensal' %}
+            <a href="{{ url_for('relatorio_pdf', mes=selected_month, ano=selected_year) }}" target="_blank" class="ghost-button" style="text-decoration: none; color: #1a5caf; border-color: #1a5caf; font-weight: bold;">📥 Baixar PDF</a>
+            {% endif %}
+            
             <a href="{{ url_for('meus_cartoes') }}" class="ghost-button" style="text-decoration: none;">💳 Meus Cartões</a>
             <a href="{{ url_for('logout') }}" class="ghost-button danger-button" style="text-decoration: none;">Sair</a>
         </div>
@@ -147,13 +152,21 @@
             <form method="post" action="{{ url_for('add_conta') }}" class="stack-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <label>Descrição <input type="text" name="descricao" placeholder="Ex: Aluguel" required></label>
-                <label>Tipo <select name="tipo_lancamento" id="tipo_lancamento" onchange="toggleParc()"><option value="unico">À Vista</option><option value="parcelado">Parcelado</option></select></label>
+                
+                <label>Tipo 
+                    <select name="tipo_lancamento" id="tipo_lancamento" onchange="toggleParc()">
+                        <option value="unico">À Vista</option>
+                        <option value="parcelado">Parcelado</option>
+                        <option value="assinatura">Assinatura Mensal (Contínua)</option>
+                    </select>
+                </label>
+                
                 <div id="campo_parc" style="display: none; gap: 14px; grid-template-columns: 1fr 1fr;">
                     <label>Total de Parcelas <input type="number" name="total_parcelas" min="2" value="2"></label>
                     <label>Parcela Atual <input type="number" name="parcela_inicial" min="1" value="1"></label>
                 </div>
                 <label>Valor <input type="number" name="valor" min="0.01" step="0.01" required></label>
-                <label>Vencimento <input type="date" name="data_vencimento" required></label>
+                <label>Vencimento Inicial <input type="date" name="data_vencimento" required></label>
                 <label>Categoria 
                     <select name="categoria">
                         {% for c in categorias_despesa %}<option value="{{c.nome}}">{{c.nome}}</option>{% endfor %}
@@ -186,7 +199,7 @@
                                         <button type="submit" class="ghost-button danger-button">X</button>
                                     </form>
                                 </div>
-                                <dialog id="dialog-edit-rec-{{m.id}}" style="border:none; border-radius:14px; padding:24px; box-shadow:var(--shadow); width:350px;">
+                                <dialog id="dialog-edit-rec-{{m.id}}">
                                     <h3>Editar Receita</h3>
                                     <form method="post" action="{{ url_for('edit_receita', id=m.id) }}" class="stack-form">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -248,7 +261,7 @@
                         </td>
                         <td>
                             <strong>{{ item.descricao }}</strong>
-                            {% if item.total_parcelas > 1 %}<br><small style="color: var(--gold);">Parcela {{ item.parcela_atual }}/{{ item.total_parcelas }}</small>{% endif %}
+                            {% if item.total_parcelas > 1 and item.total_parcelas != 999 %}<br><small style="color: var(--gold);">Parcela {{ item.parcela_atual }}/{{ item.total_parcelas }}</small>{% endif %}
                             {% if item.is_fatura %}<br><small style="color: var(--muted);">Gerada automaticamente</small>{% endif %}
                         </td>
                         <td><span class="counter-pill">{{ item.categoria }}</span></td>
@@ -261,7 +274,7 @@
                                 <form method="post" action="{{ url_for('delete_conta', conta_id=item.id) }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="ghost-button danger-button">X</button>
-                                    {% if item.total_parcelas > 1 %}<label style="font-size: 0.7rem; display: block;"><input type="checkbox" name="deletar_tudo" value="sim"> Limpar Carnê</label>{% endif %}
+                                    {% if item.total_parcelas > 1 %}<label style="font-size: 0.7rem; display: block;"><input type="checkbox" name="deletar_tudo" value="sim"> Limpar Tudo</label>{% endif %}
                                 </form>
                             </div>
                             <dialog id="dialog-edit-cta-{{item.id}}" style="border:none; border-radius:14px; padding:24px; box-shadow:var(--shadow); width:350px;">
@@ -422,7 +435,7 @@
                         <button type="submit" class="ghost-button danger-button" style="font-size:0.75rem; padding:4px 8px;">Remover</button>
                     </form>
                 </div>
-                <dialog id="dialog-edit-meta-{{item.id}}" style="border:none; border-radius:14px; padding:24px; box-shadow:var(--shadow); width:350px;">
+                <dialog id="dialog-edit-meta-{{item.id}}">
                     <h3>Editar Meta</h3>
                     <form method="post" action="{{ url_for('edit_meta', id=item.id) }}" class="stack-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -596,20 +609,9 @@ new Chart(ctx, {
         labels: {{ chart_labels|tojson }},
         datasets: [{
             data: {{ chart_data|tojson }},
-            // Expandimos a paleta de cores para evitar repetições
             backgroundColor: [
-                '#0f8a63', // Verde
-                '#d45a3d', // Coral
-                '#c88d1d', // Dourado
-                '#1a5caf', // Azul
-                '#7b6a4b', // Marrom
-                '#8e44ad', // Roxo
-                '#16a085', // Verde Água
-                '#e67e22', // Laranja
-                '#2c3e50', // Azul Escuro
-                '#c0392b', // Vermelho Escuro
-                '#34495e', // Cinza Azulado
-                '#d35400'  // Abóbora
+                '#0f8a63', '#d45a3d', '#c88d1d', '#1a5caf', '#7b6a4b', 
+                '#8e44ad', '#16a085', '#e67e22', '#2c3e50', '#c0392b', '#34495e', '#d35400'
             ],
             borderWidth: 2, borderColor: '#fffbf4'
         }]
