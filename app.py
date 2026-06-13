@@ -7,7 +7,7 @@ import uuid
 import webbrowser
 from threading import Timer
 from pathlib import Path
-import pytz  # MELHORIA 2: Importando biblioteca de fuso horário
+import pytz
 
 from flask import Flask, flash, redirect, render_template, request, url_for, session
 from flask_sqlalchemy import SQLAlchemy
@@ -20,11 +20,10 @@ from flask_wtf.csrf import CSRFProtect
 BASE_DIR_PATH = Path(__file__).resolve().parent
 ZERO = Decimal("0.00")
 
-# MELHORIA 2: Função central para pegar sempre a data e hora do Brasil
 def get_today_br():
     return datetime.now(pytz.timezone('America/Sao_Paulo')).date()
 
-# --- 1. CONFIGURAÇÃO DE PASTAS ---
+# --- CONFIGURAÇÃO DE PASTAS ---
 if getattr(sys, 'frozen', False):
     BASE_DIR = Path(sys.executable).parent
     DATABASE_PATH = BASE_DIR / "financeiro.db"
@@ -41,10 +40,10 @@ else:
     static_dir = os.path.join(BASE_DIR, 'static')
     load_dotenv()
 
-# --- 2. CRIAÇÃO DO APP ---
+# --- CRIAÇÃO DO APP ---
 app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
-# --- 3. CONFIGURAÇÃO DO BANCO DE DADOS ---
+# --- CONFIGURAÇÃO DO BANCO DE DADOS ---
 database_url = os.environ.get("DATABASE_URL")
 
 if database_url:
@@ -57,7 +56,7 @@ else:
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "financas-secret-key-local")
 
-# MELHORIA 1: Prevenção de erro 500 (testa conexões fantasmas e recicla as antigas)
+# Prevenção de erro 500 no Vercel
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
@@ -68,7 +67,6 @@ db = SQLAlchemy(app)
 
 
 # --- MODELOS DE BANCO DE DADOS ---
-
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -99,7 +97,7 @@ class Movimentacao(db.Model):
     descricao = db.Column(db.String(160), nullable=False)
     categoria = db.Column(db.String(50), nullable=False) 
     valor = db.Column(db.Numeric(12, 2), nullable=False, default=ZERO)
-    data_registro = db.Column(db.Date, nullable=False, default=get_today_br) # MELHORIA 2
+    data_registro = db.Column(db.Date, nullable=False, default=get_today_br)
 
 class ContaPagar(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -131,7 +129,7 @@ class Investimento(db.Model):
     taxa_rendimento = db.Column(db.String(100), nullable=True)
     valor_aporte = db.Column(db.Numeric(12, 2), nullable=False, default=ZERO)
     valor_atual = db.Column(db.Numeric(12, 2), nullable=False, default=ZERO)
-    data_aporte = db.Column(db.Date, nullable=False, default=get_today_br) # MELHORIA 2
+    data_aporte = db.Column(db.Date, nullable=False, default=get_today_br)
     meta_id = db.Column(db.Integer, db.ForeignKey('meta_patrimonial.id'), nullable=True)
     resgatado = db.Column(db.Boolean, nullable=False, default=False)
 
@@ -180,7 +178,6 @@ class FaturaVirtual:
             self.data_vencimento = date(ano, mes, min(dia_vencimento, last_day))
 
 # --- FUNÇÕES AUXILIARES ---
-
 def to_decimal(value: object) -> Decimal:
     if value in (None, ""): return ZERO
     return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -203,8 +200,7 @@ def calcular_fatura(data_compra: date, dia_fechamento: int, parcela_n: int) -> t
         dt = adicionar_meses(dt, 1)
     return dt.month, dt.year
 
-# --- DECORADORES DE IAM ---
-
+# --- DECORADORES ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -240,7 +236,6 @@ def sw():
     return app.send_static_file('sw.js')
 
 # --- ROTAS DE AUTENTICAÇÃO ---
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -269,7 +264,7 @@ def logout():
 @app.route("/", methods=["GET"])
 @normal_user_required
 def dashboard():
-    hoje = get_today_br() # MELHORIA 2
+    hoje = get_today_br()
     uid = session["user_id"]
     view_mode = request.args.get("view", "mensal")
     selected_month = int(request.args.get("month", hoje.month))
@@ -330,7 +325,6 @@ def dashboard():
     total_contas_pendentes = sum([to_decimal(c.valor) for c in contas if not c.pago]) + sum([to_decimal(dc.valor) for dc in despesas_cartao if not dc.pago])
     total_contas_pagas = sum([to_decimal(c.valor) for c in contas if c.pago]) + sum([to_decimal(dc.valor) for dc in despesas_cartao if dc.pago])
 
-
     saldo_consolidado = total_receitas - total_contas_pagas - total_investido_mes
     patrimonio_total_acumulado = sum([to_decimal(i.valor_atual) for i in carteira_ativa])
 
@@ -382,8 +376,13 @@ def meus_cartoes():
     cartoes = CartaoCredito.query.filter_by(user_id=session["user_id"]).all()
     return render_template("meus_cartoes.html", cartoes=cartoes)
 
-# --- ROTAS DO ADMIN ---
+# --- ROTA DE AJUDA ---
+@app.route("/ajuda", methods=["GET"])
+@normal_user_required
+def ajuda():
+    return render_template("ajuda.html")
 
+# --- ROTAS DO ADMIN ---
 @app.route("/configuracoes", methods=["GET"])
 @admin_required
 def configuracoes():
@@ -469,7 +468,6 @@ def delete_orcamento(id):
     return redirect(url_for("dashboard", tab="tab-visao"))
 
 # --- ROTAS DE FLUXO DE CAIXA (USUÁRIOS COMUNS) ---
-
 @app.route("/receita/add", methods=["POST"])
 @normal_user_required
 def add_receita():
@@ -477,7 +475,6 @@ def add_receita():
     categoria = request.form.get("categoria", "Salário")
     valor = to_decimal(request.form.get("valor"))
     data_str = request.form.get("data")
-    # MELHORIA 2: Fuso horário do Brasil
     data_mov = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
 
     db.session.add(Movimentacao(user_id=session["user_id"], descricao=descricao, categoria=categoria, valor=valor, data_registro=data_mov))
@@ -569,7 +566,6 @@ def delete_conta(conta_id):
     return redirect(url_for("dashboard", month=m, year=y, tab='tab-cronograma'))
 
 # --- ROTAS DE GESTÃO DE CARTÕES E DESPESAS (USUÁRIOS COMUNS) ---
-
 @app.route("/cartao/add", methods=["POST"])
 @normal_user_required
 def add_cartao():
@@ -612,7 +608,6 @@ def add_despesa_cartao():
     total_parcelas = int(request.form.get("total_parcelas", 1))
 
     cartao = CartaoCredito.query.filter_by(id=cartao_id, user_id=session["user_id"]).first_or_404()
-    # MELHORIA 2: Fuso horário do Brasil
     data_compra = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
     grupo_id = str(uuid.uuid4())[:8] if total_parcelas > 1 else None
     valor_parcela = (valor_total / total_parcelas).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -668,7 +663,6 @@ def toggle_fatura(cartao_id, mes, ano):
     return redirect(url_for("dashboard", month=mes, year=ano, tab="tab-cronograma"))
 
 # --- ROTAS DE INVESTIMENTOS E METAS (USUÁRIOS COMUNS) ---
-
 @app.route("/investimento/add", methods=["POST"])
 @normal_user_required
 def add_investimento():
@@ -678,7 +672,6 @@ def add_investimento():
     valor = to_decimal(request.form.get("valor_aporte"))
     data_str = request.form.get("data_aporte")
     meta_id = request.form.get("meta_id")
-    # MELHORIA 2: Fuso horário do Brasil
     data_ap = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
 
     db.session.add(Investimento(
@@ -718,7 +711,7 @@ def resgatar_investimento(id):
     inv = Investimento.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
     db.session.add(Movimentacao(
         user_id=session["user_id"], descricao=f"Resgate: {inv.ativo} ({inv.taxa_rendimento})",
-        categoria="Renda Extra", valor=inv.valor_atual, data_registro=get_today_br() # MELHORIA 2: Fuso horário do Brasil
+        categoria="Renda Extra", valor=inv.valor_atual, data_registro=get_today_br()
     ))
     inv.resgatado = True
     inv.meta_id = None 
