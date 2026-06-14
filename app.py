@@ -163,7 +163,6 @@ class FaturaVirtual:
         try:
             self.data_vencimento = date(ano, mes, dia_vencimento)
         except ValueError:
-            import calendar
             _, last_day = calendar.monthrange(ano, mes)
             self.data_vencimento = date(ano, mes, min(dia_vencimento, last_day))
 
@@ -258,23 +257,22 @@ def dashboard():
     categorias_receita = Categoria.query.filter_by(tipo='receita').order_by(Categoria.nome.asc()).all()
     cartoes = CartaoCredito.query.filter_by(user_id=uid).all()
 
-    # CORREÇÃO DEFINITIVA DO FILTRO DE DATAS (Para funcionar no Supabase perfeitamente)
+    # BUSCA BLINDADA POR INTERVALO DE DATAS (Resolve o erro 500 no Vercel)
     if view_mode == "mensal":
         first_day = date(selected_year, selected_month, 1)
         _, last_d = calendar.monthrange(selected_year, selected_month)
         last_day = date(selected_year, selected_month, last_d)
-        
-        mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= first_day, Movimentacao.data_registro <= last_day)
-        contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= first_day, ContaPagar.data_vencimento <= last_day)
-        inv_query = Investimento.query.filter(Investimento.user_id==uid, Investimento.data_aporte >= first_day, Investimento.data_aporte <= last_day)
-        despesas_cartao = DespesaCartao.query.filter_by(user_id=uid, mes_fatura=selected_month, ano_fatura=selected_year).all()
     else:
         first_day = date(selected_year, 1, 1)
         last_day = date(selected_year, 12, 31)
-        
-        mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= first_day, Movimentacao.data_registro <= last_day)
-        contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= first_day, ContaPagar.data_vencimento <= last_day)
-        inv_query = Investimento.query.filter(Investimento.user_id==uid, Investimento.data_aporte >= first_day, Investimento.data_aporte <= last_day)
+
+    mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= first_day, Movimentacao.data_registro <= last_day)
+    contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= first_day, ContaPagar.data_vencimento <= last_day)
+    inv_query = Investimento.query.filter(Investimento.user_id==uid, Investimento.data_aporte >= first_day, Investimento.data_aporte <= last_day)
+    
+    if view_mode == "mensal":
+        despesas_cartao = DespesaCartao.query.filter_by(user_id=uid, mes_fatura=selected_month, ano_fatura=selected_year).all()
+    else:
         despesas_cartao = DespesaCartao.query.filter_by(user_id=uid, ano_fatura=selected_year).all()
 
     movimentacoes = mov_query.order_by(Movimentacao.data_registro.desc()).all()
@@ -340,6 +338,13 @@ def dashboard():
     chart_labels = list(gastos_por_categoria.keys())
     chart_data = [float(val) for val in gastos_por_categoria.values()]
 
+    receitas_por_categoria = {}
+    for m in movimentacoes:
+        receitas_por_categoria[m.categoria] = receitas_por_categoria.get(m.categoria, ZERO) + to_decimal(m.valor)
+    
+    chart_labels_receitas = list(receitas_por_categoria.keys())
+    chart_data_receitas = [float(val) for val in receitas_por_categoria.values()]
+
     orcamentos_db = OrcamentoMensal.query.filter_by(user_id=uid).all()
     orcamentos_progresso = []
     for orc in orcamentos_db:
@@ -350,19 +355,21 @@ def dashboard():
             'gasto': gasto_cat, 'pct': float(pct.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
         })
 
+    # OTIMIZAÇÃO: PROCESSAMENTO ANUAL EM MEMÓRIA (Evita Crash no Vercel)
     anual_receitas = [0.0] * 12
     anual_despesas = [0.0] * 12
     if view_mode == "anual":
-        for m in range(1, 13):
-            fd = date(selected_year, m, 1)
-            _, ld_d = calendar.monthrange(selected_year, m)
-            ld = date(selected_year, m, ld_d)
-            
-            m_mov = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= fd, Movimentacao.data_registro <= ld).all()
-            m_ct = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= fd, ContaPagar.data_vencimento <= ld).all()
-            m_dc = DespesaCartao.query.filter_by(user_id=uid, mes_fatura=m, ano_fatura=selected_year).all()
-            anual_receitas[m-1] = float(sum([to_decimal(x.valor) for x in m_mov]))
-            anual_despesas[m-1] = float(sum([to_decimal(x.valor) for x in m_ct]) + sum([to_decimal(x.valor) for x in m_dc]))
+        for m_item in movimentacoes:
+            if m_item.data_registro:
+                anual_receitas[m_item.data_registro.month - 1] += float(to_decimal(m_item.valor))
+                
+        for c_item in contas:
+            if c_item.data_vencimento:
+                anual_despesas[c_item.data_vencimento.month - 1] += float(to_decimal(c_item.valor))
+                
+        for dc_item in despesas_cartao:
+            if dc_item.mes_fatura:
+                anual_despesas[dc_item.mes_fatura - 1] += float(to_decimal(dc_item.valor))
 
     meses_nomes = {1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"}
 
@@ -371,7 +378,9 @@ def dashboard():
         metas_progresso=metas_progresso, orcamentos_progresso=orcamentos_progresso, total_receitas=total_receitas, total_investido=total_investido_mes,
         total_contas_pendentes=total_contas_pendentes, total_contas_pagas=total_contas_pagas, alertas=alertas, cartoes_info=cartoes_info,
         saldo_consolidado=saldo_consolidado, patrimonio_total_acumulado=patrimonio_total_acumulado,
-        chart_labels=chart_labels, chart_data=chart_data, view_mode=view_mode, selected_month=selected_month, selected_year=selected_year, meses_nomes=meses_nomes, hoje=hoje,
+        chart_labels=chart_labels, chart_data=chart_data, 
+        chart_labels_receitas=chart_labels_receitas, chart_data_receitas=chart_data_receitas,
+        view_mode=view_mode, selected_month=selected_month, selected_year=selected_year, meses_nomes=meses_nomes, hoje=hoje,
         categorias_despesa=categorias_despesa, categorias_receita=categorias_receita, cartoes=cartoes, despesas_cartao=despesas_cartao, 
         current_tab=current_tab, anual_receitas=anual_receitas, anual_despesas=anual_despesas, metas=metas_db
     )
@@ -407,7 +416,6 @@ def perfil():
         return redirect(url_for("perfil"))
     return render_template("perfil.html", user=user)
 
-# ROTA DE PDF ATUALIZADA PARA ACEITAR MÊS = 0 (ANO TODO)
 @app.route("/relatorio_pdf/<int:mes>/<int:ano>")
 @normal_user_required
 def relatorio_pdf(mes, ano):
@@ -506,7 +514,6 @@ def delete_orcamento(id):
 def add_receita():
     descricao = request.form.get("descricao", "").strip()
     categoria = request.form.get("categoria") or "Outros"
-    
     valor, data_str = to_decimal(request.form.get("valor")), request.form.get("data")
     data_mov = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
     db.session.add(Movimentacao(user_id=session["user_id"], descricao=descricao, categoria=categoria, valor=valor, data_registro=data_mov))
@@ -750,7 +757,7 @@ with app.app_context():
         db.session.add(User(username=os.environ.get("ADMIN_USERNAME", "admin"), password_hash=generate_password_hash(os.environ.get("ADMIN_PASSWORD", "senha_segura_123")), is_admin=True))
         db.session.commit()
     if Categoria.query.count() == 0:
-        for n, t in [('Moradia', 'despesa'), ('Transporte', 'despesa'), ('Lazer', 'despesa'), ('Outros', 'despesa'), ('Salário', 'receita'), ('Renda Extra', 'receita'), ('Investimentos', 'receita')]: db.session.add(Categoria(nome=n, tipo=t))
+        for n, t in [('Moradia', 'despesa'), ('Transporte', 'despesa'), ('Lazer', 'despesa'), ('Terceiros', 'despesa'), ('Outros', 'despesa'), ('Salário', 'receita'), ('Renda Extra', 'receita'), ('Investimentos', 'receita')]: db.session.add(Categoria(nome=n, tipo=t))
         db.session.commit()
 
 if __name__ == "__main__":
