@@ -33,6 +33,10 @@ body {
 .hero-actions { display: flex; gap: 16px; align-items: center; }
 .filter-form { display: flex; gap: 8px; align-items: center; }
 
+/* FIX DO BOTÃO DE SAIR E PERFIL (Não sobrepor) */
+.mobile-safe-actions { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; justify-content: flex-end; }
+.mobile-safe-actions a { padding: 10px; text-align: center; white-space: nowrap; }
+
 .tabs-nav { display: flex; gap: 12px; margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px; }
 .metric-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; margin-top: 22px; transition: all 0.3s ease; }
 .dashboard-grid { display: grid; gap: 18px; margin-top: 22px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -84,26 +88,28 @@ dialog { max-width: 90vw !important; } dialog::backdrop { background: rgba(0, 0,
 @keyframes pulse-border { 0% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(1.03); opacity: 1; } 100% { transform: scale(1); opacity: 0.9; } }
 @keyframes fade-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Botão Expandir Resumo */
 .metrics-toggle-btn { display: none; width: 100%; padding: 14px; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); font-weight: 800; color: var(--text); cursor: pointer; margin-top: 15px; align-items: center; justify-content: space-between; box-shadow: var(--shadow); }
 
-/* --- CORREÇÃO DO MODO ESCURO (DARK MODE) --- */
-body.dark-mode { background: #121212; color: #f0f0f0; }
-body.dark-mode .container, body.dark-mode .panel, body.dark-mode .hero-card, body.dark-mode .metric-card, body.dark-mode .help-section { background: #1e1e1e; box-shadow: none; border: 1px solid #333; color: #f0f0f0; }
-body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background-color: #2a2a2a !important; color: #ffffff !important; border: 1px solid #444 !important; }
-body.dark-mode input::placeholder { color: #888; }
-body.dark-mode table { color: #e0e0e0; }
-body.dark-mode th { background-color: #2c2c2c; color: #d0d0d0; }
+/* --- CORREÇÃO DEFINITIVA DO MODO ESCURO (Textos Brancos) --- */
+body.dark-mode { background: #121212; color: #ffffff; }
+body.dark-mode .container, body.dark-mode .panel, body.dark-mode .hero-card, body.dark-mode .metric-card, body.dark-mode .help-section { background: #1e1e1e; box-shadow: none; border: 1px solid #333; color: #ffffff; }
+body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background-color: #2a2a2a !important; color: #ffffff !important; border: 1px solid #555 !important; }
+body.dark-mode input::placeholder { color: #aaaaaa; }
+body.dark-mode table { color: #ffffff; }
+body.dark-mode th { background-color: #2c2c2c; color: #ffffff; }
 body.dark-mode td { border-bottom: 1px solid #333; }
-body.dark-mode .ghost-button { background: #333; color: #f0f0f0; border-color: #555; }
-body.dark-mode .counter-pill { background: #333; border-color: #555; color: #d0d0d0; }
-body.dark-mode dialog { background: #1e1e1e; color: #f0f0f0; border: 1px solid #333; }
-body.dark-mode .metrics-toggle-btn { background: #1e1e1e; color: #f0f0f0; border-color: #333; }
+body.dark-mode .ghost-button { background: #333 !important; color: #ffffff !important; border-color: #555 !important; }
+body.dark-mode .counter-pill { background: #333; border-color: #555; color: #ffffff; }
+body.dark-mode dialog { background: #1e1e1e; color: #ffffff; border: 1px solid #333; }
+body.dark-mode .metrics-toggle-btn { background: #1e1e1e; color: #ffffff; border-color: #333; }
 body.dark-mode .bottom-nav { background: #1e1e1e; border-top: 1px solid #333; }
-body.dark-mode .nav-item { color: #888; }
+body.dark-mode .nav-item { color: #aaaaaa; }
 body.dark-mode .nav-item.active { color: #4fa3ff; }
+body.dark-mode .eyebrow { color: #cccccc; }
+body.dark-mode .metric-label { color: #cccccc; }
+body.dark-mode .tab-btn { color: #cccccc; }
+body.dark-mode h1, body.dark-mode h2, body.dark-mode h3 { color: #ffffff; }
 
-/* Bottom Nav */
 .bottom-nav { display: none; }
 
 @media (max-width: 1200px) { .metric-grid { grid-template-columns: repeat(3, 1fr); } }
@@ -115,8 +121,8 @@ body.dark-mode .nav-item.active { color: #4fa3ff; }
     .filter-form { width: 100%; flex-wrap: wrap; }
     .filter-form select, .filter-form a { flex: 1 1 auto; text-align: center; }
     
-    .mobile-safe-actions { display: flex; gap: 8px; width: 100%; }
-    .mobile-safe-actions a { flex: 1; text-align: center; }
+    .mobile-safe-actions { justify-content: flex-start; }
+    .mobile-safe-actions a { flex: 1 1 calc(33.333% - 8px); min-width: 80px; }
 
     .metrics-toggle-btn { display: flex; }
     .metric-grid { display: none; margin-top: 10px !important; grid-template-columns: 1fr 1fr; }
@@ -125,7 +131,6 @@ body.dark-mode .nav-item.active { color: #4fa3ff; }
     .dashboard-grid, .summary-grid { grid-template-columns: 1fr; }
     .tabs-nav { display: none; }
 
-    /* Aba nova adicionada no Bottom Nav */
     .bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; box-shadow: 0 -4px 10px rgba(0,0,0,0.1); z-index: 1000; justify-content: space-around; padding: 10px 0 20px 0; }
     .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; text-decoration: none; color: var(--muted); font-size: 0.70rem; font-weight: 700; gap: 4px; flex: 1; }
     .nav-item i { font-size: 1.3rem; font-style: normal; }

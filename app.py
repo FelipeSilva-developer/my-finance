@@ -235,7 +235,7 @@ def login():
             if user.is_admin: return redirect(url_for("configuracoes"))
             return redirect(url_for("dashboard"))
         else:
-            flash("Usuário ou palavra-passe incorretos.", "error")
+            flash("Usuário ou senha incorretos.", "error")
     return render_template("login.html")
 
 @app.route("/logout")
@@ -278,7 +278,8 @@ def dashboard():
     for cartao in cartoes:
         if view_mode == "mensal":
             desp_cartao = [dc for dc in despesas_cartao if dc.cartao_id == cartao.id]
-            if desp_cartao: faturas_virtuais.append(FaturaVirtual(cartao.id, cartao.nome, selected_month, selected_year, cartao.dia_vencimento, desp_cartao))
+            if desp_cartao:
+                faturas_virtuais.append(FaturaVirtual(cartao.id, cartao.nome, selected_month, selected_year, cartao.dia_vencimento, desp_cartao))
         else:
             desp_by_mes = {}
             for dc in despesas_cartao:
@@ -292,8 +293,8 @@ def dashboard():
     alertas = []
     vencidas = sum(1 for c in itens_cronograma if not c.pago and c.data_vencimento < hoje)
     vencendo_hoje = sum(1 for c in itens_cronograma if not c.pago and c.data_vencimento == hoje)
-    if vencidas > 0: alertas.append(f"🚨 Atenção: Tem {vencidas} conta(s) em atraso!")
-    if vencendo_hoje > 0: alertas.append(f"⚠️ Lembrete: Tem {vencendo_hoje} conta(s) a vencer hoje!")
+    if vencidas > 0: alertas.append(f"🚨 Atenção: Você tem {vencidas} conta(s) em atraso!")
+    if vencendo_hoje > 0: alertas.append(f"⚠️ Lembrete: Você tem {vencendo_hoje} conta(s) a vencer hoje!")
 
     cartoes_info = []
     for c in cartoes:
@@ -365,11 +366,13 @@ def dashboard():
 @app.route("/meus_cartoes", methods=["GET"])
 @normal_user_required
 def meus_cartoes():
-    return render_template("meus_cartoes.html", cartoes=CartaoCredito.query.filter_by(user_id=session["user_id"]).all())
+    cartoes = CartaoCredito.query.filter_by(user_id=session["user_id"]).all()
+    return render_template("meus_cartoes.html", cartoes=cartoes)
 
 @app.route("/ajuda", methods=["GET"])
 @normal_user_required
-def ajuda(): return render_template("ajuda.html")
+def ajuda():
+    return render_template("ajuda.html")
 
 @app.route("/perfil", methods=["GET", "POST"])
 @normal_user_required
@@ -378,10 +381,13 @@ def perfil():
     if request.method == "POST":
         novo_nome = request.form.get("username").strip()
         nova_senha = request.form.get("senha")
-        if novo_nome != user.username and User.query.filter_by(username=novo_nome).first(): flash("Este nome de utilizador já está em uso.", "error")
+        
+        if novo_nome != user.username and User.query.filter_by(username=novo_nome).first():
+            flash("Este nome de usuário já está em uso.", "error")
         else:
             user.username = novo_nome
-            if nova_senha: user.password_hash = generate_password_hash(nova_senha)
+            if nova_senha:
+                user.password_hash = generate_password_hash(nova_senha)
             db.session.commit()
             session["username"] = user.username
             flash("Perfil atualizado com sucesso!", "success")
@@ -396,7 +402,8 @@ def relatorio_pdf(mes, ano):
     contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, extract('month', ContaPagar.data_vencimento) == mes, extract('year', ContaPagar.data_vencimento) == ano).order_by(ContaPagar.data_vencimento.asc()).all()
     total_receitas = sum([to_decimal(m.valor) for m in mov_query])
     total_despesas = sum([to_decimal(c.valor) for c in contas_query])
-    return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes=mes, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=(total_receitas - total_despesas))
+    saldo = total_receitas - total_despesas
+    return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes=mes, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=saldo)
 
 @app.route("/configuracoes", methods=["GET"])
 @admin_required
@@ -423,6 +430,7 @@ def edit_user(id):
     if senha:
         user.password_hash = generate_password_hash(senha)
         db.session.commit()
+        flash(f"Senha do usuário {user.username} atualizada!", "success")
     return redirect(url_for("configuracoes"))
 
 @app.route("/admin/user/<int:id>/delete", methods=["POST"])
@@ -471,7 +479,10 @@ def delete_orcamento(id):
 @app.route("/receita/add", methods=["POST"])
 @normal_user_required
 def add_receita():
-    descricao, categoria = request.form.get("descricao", "").strip(), request.form.get("categoria")
+    descricao = request.form.get("descricao", "").strip()
+    # PREVENÇÃO DE ERRO SE A CATEGORIA VIER VAZIA
+    categoria = request.form.get("categoria") or "Outros"
+    
     valor, data_str = to_decimal(request.form.get("valor")), request.form.get("data")
     data_mov = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
     db.session.add(Movimentacao(user_id=session["user_id"], descricao=descricao, categoria=categoria, valor=valor, data_registro=data_mov))
@@ -482,7 +493,9 @@ def add_receita():
 @normal_user_required
 def edit_receita(id):
     m = Movimentacao.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    m.descricao, m.categoria, m.valor = request.form.get("descricao", "").strip(), request.form.get("categoria"), to_decimal(request.form.get("valor"))
+    m.descricao = request.form.get("descricao", "").strip()
+    m.categoria = request.form.get("categoria") or "Outros"
+    m.valor = to_decimal(request.form.get("valor"))
     data_str = request.form.get("data")
     if data_str: m.data_registro = datetime.strptime(data_str, "%Y-%m-%d").date()
     db.session.commit()
@@ -502,7 +515,7 @@ def delete_receita(id):
 def add_conta():
     descricao = request.form.get("descricao", "").strip()
     resp = request.form.get("responsavel", "").strip()
-    if resp: descricao = f"{descricao} [Resp: {resp}]" # TRUQUE DO RESPONSÁVEL SEM MEXER NO BANCO
+    if resp: descricao = f"{descricao} [Resp: {resp}]"
     
     categoria, valor_total = request.form.get("categoria", "Outros"), to_decimal(request.form.get("valor"))
     venc_str, tipo = request.form.get("data_vencimento"), request.form.get("tipo_lancamento", "unico")
@@ -582,10 +595,11 @@ def add_despesa_cartao():
     cid = int(request.form.get("cartao_id", 0))
     descricao = request.form.get("descricao", "").strip()
     resp = request.form.get("responsavel", "").strip()
-    if resp: descricao = f"{descricao} [Resp: {resp}]" # TRUQUE DO RESPONSÁVEL AQUI TAMBÉM
+    if resp: descricao = f"{descricao} [Resp: {resp}]"
     
     valor_t, d_str = to_decimal(request.form.get("valor")), request.form.get("data_compra")
-    cat, t_parc = request.form.get("categoria", "Outros"), int(request.form.get("total_parcelas", 1))
+    cat = request.form.get("categoria") or "Outros"
+    t_parc = int(request.form.get("total_parcelas", 1))
 
     cartao = CartaoCredito.query.filter_by(id=cid, user_id=session["user_id"]).first_or_404()
     d_compra = datetime.strptime(d_str, "%Y-%m-%d").date() if d_str else get_today_br()
@@ -602,7 +616,8 @@ def add_despesa_cartao():
 @normal_user_required
 def edit_despesa_cartao(id):
     dc = DespesaCartao.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    dc.descricao, dc.valor, dc.categoria = request.form.get("descricao", "").strip(), to_decimal(request.form.get("valor")), request.form.get("categoria")
+    dc.descricao, dc.valor = request.form.get("descricao", "").strip(), to_decimal(request.form.get("valor"))
+    dc.categoria = request.form.get("categoria") or "Outros"
     db.session.commit()
     return redirect(url_for("dashboard", month=dc.mes_fatura, year=dc.ano_fatura, tab="tab-cartao"))
 
@@ -619,7 +634,7 @@ def toggle_despesa_cartao(id):
 def delete_despesa_cartao(id):
     dc = DespesaCartao.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
     m, y = dc.mes_fatura, dc.ano_fatura
-    if request.form.get("deletar_tudo") == "sim" and dc.grupo_id: DespesaCartao.query.filter_by(user_id=session["user_id"], grupo_id=dc.grupo_id).delete()
+    if request.form.get("deletar_tudo") == "sim" and dc.grupo_id: DespesaCartao.query.filter_by(user_id=session["user_id"], grupo_recorrencia_id=dc.grupo_id).delete()
     else: db.session.delete(dc)
     db.session.commit()
     return redirect(url_for("dashboard", month=m, year=y, tab="tab-cartao"))

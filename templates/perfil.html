@@ -2,8 +2,8 @@
 
 {% block content %}
 <div class="header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-    <h2>👤 O meu Perfil</h2>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Voltar ao Início</a>
+    <h2>👤 Meu Perfil</h2>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary" style="padding: 10px; background: white; border: 1px solid #ccc; border-radius: 8px; text-decoration: none; color: black; font-weight: bold;">Voltar ao Início</a>
 </div>
 
 <div class="panel" style="max-width: 500px; margin: 0 auto; margin-top: 40px;">
@@ -13,11 +13,11 @@
     <form method="post" action="{{ url_for('perfil') }}" class="stack-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         
-        <label>Nome de Utilizador
+        <label>Nome de Usuário
             <input type="text" name="username" value="{{ user.username }}" required>
         </label>
         
-        <label>Nova Palavra-passe
+        <label>Nova Senha
             <input type="password" name="senha" placeholder="Deixe em branco para não alterar">
         </label>
         

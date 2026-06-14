@@ -7,7 +7,7 @@
     <div class="hero-header">
         <div>
             <p class="eyebrow">Olá, {{ session.username }}!</p>
-            <h1>O meu Controlo Financeiro</h1>
+            <h1>Meu Controle Financeiro</h1>
         </div>
         
         <div class="hero-actions">
@@ -77,7 +77,7 @@
         </article>
 
         <article class="panel">
-            <div class="panel-heading"><h2>Planeador de Orçamento Inteligente</h2></div>
+            <div class="panel-heading"><h2>Planejador de Orçamento Inteligente</h2></div>
             <div class="stack-form" style="margin-bottom: 24px; padding: 15px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px solid var(--line);">
                 <label>Sua Renda Principal (R$) <input type="number" id="renda_base" placeholder="Ex: 5000" style="background: white;"></label>
                 <label>Estratégia
@@ -91,7 +91,7 @@
                 <div id="resultado_orcamento" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem; line-height: 1.6; display: none;"></div>
             </div>
 
-            <div class="panel-heading"><h2>Os seus Limites Manuais (Regras)</h2></div>
+            <div class="panel-heading"><h2>Seus Limites Manuais (Regras)</h2></div>
             <form method="post" action="{{ url_for('add_orcamento') }}" class="stack-form" style="display:flex; gap:10px; align-items:end; margin-bottom: 20px;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <label style="flex: 1;">Categoria <select name="categoria" required>{% for c in categorias_despesa %}<option value="{{c.nome}}">{{c.nome}}</option>{% endfor %}</select></label>
@@ -133,7 +133,7 @@
                         {% for cr in categorias_receita %}<option value="{{cr.nome}}">{{cr.nome}}</option>{% endfor %}
                     </select>
                 </label>
-                <button type="submit" class="primary-button">Guardar Receita</button>
+                <button type="submit" class="primary-button">Salvar Receita</button>
             </form>
         </article>
     </section>
@@ -142,7 +142,7 @@
         <article class="panel">
             <div class="panel-heading" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap:10px;">
                 <h2>Histórico de Entradas</h2>
-                <input type="text" id="filtroReceitas" onkeyup="filtrarTabela('filtroReceitas', 'tabelaReceitas')" placeholder="🔍 Procurar entrada..." style="max-width: 250px;">
+                <input type="text" id="filtroReceitas" onkeyup="filtrarTabela('filtroReceitas', 'tabelaReceitas')" placeholder="🔍 Pesquisar entrada..." style="max-width: 250px;">
             </div>
             <div class="table-wrap">
                 <table id="tabelaReceitas">
@@ -374,12 +374,17 @@
 <div id="tab-patrimonio" class="tab-content">
     <section class="summary-grid" style="margin-top: 22px;">
         <article class="panel">
-            <div class="panel-heading"><h2>As minhas Metas</h2></div>
+            <div class="panel-heading"><h2>Minhas Metas</h2></div>
             {% for item in metas_progresso %}
             {% set pct_clamped = 100 if item.pct > 100 else item.pct %}
             <div class="meta-item" style="margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px dashed var(--line);">
                 <div style="display: flex; justify-content: space-between; font-weight: bold;">
                     <span>🎯 {{ item.objetivo }}</span><span>{{ item.pct }}% (Alvo: {{ item.valor_alvo|brl }})</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-top: 4px; margin-bottom: 6px;">
+                    <span style="color: var(--muted);">Acumulado: <strong>{{ item.total_acumulado|brl }}</strong></span>
+                    {% if item.sugestao_mensal > 0 %}<span style="color: var(--gold); font-weight:700;">Ideal: {{ item.sugestao_mensal|brl }} /mês</span>
+                    {% else %}<span style="color: var(--green); font-weight:700;">✅ Concluída!</span>{% endif %}
                 </div>
                 <div class="progress-bar-bg" style="width: 100%; height: 12px; background: rgba(0,0,0,0.08); border-radius: 6px; overflow: hidden; margin-top: 10px;">
                     <div class="progress-bar-fill" style="width: {{ pct_clamped }}%; height: 100%; background: linear-gradient(90deg, var(--gold), var(--green));"></div>
@@ -399,7 +404,7 @@
                 <div class="stack-form" style="padding: 15px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px solid var(--line);">
                     <label>Quanto quer receber por mês? (R$) <input type="number" id="sim_renda_mensal" placeholder="Ex: 5000" style="background: white;"></label>
                     <label>Daqui a quantos anos? <input type="number" id="sim_anos" placeholder="Ex: 20" style="background: white;"></label>
-                    <button type="button" class="primary-button" onclick="calcularAposentadoria()">Calcular Património Necessário</button>
+                    <button type="button" class="primary-button" onclick="calcularAposentadoria()">Calcular Patrimônio Necessário</button>
                     <div id="resultado_aposentadoria" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem; line-height: 1.6; display: none;"></div>
                 </div>
             </div>
@@ -407,13 +412,13 @@
 
         <div>
             <article class="panel" style="margin-bottom: 18px;">
-                <div class="panel-heading"><h2>Registar Aporte</h2></div>
+                <div class="panel-heading"><h2>Registrar Aporte</h2></div>
                 <form method="post" action="{{ url_for('add_investimento') }}" class="stack-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <label>Ativo <input type="text" name="ativo" required></label>
                     <label>Valor (R$) <input type="text" name="valor_aporte" class="currency-mask" required></label>
                     <label>Vincular a uma Meta? <select name="meta_id"><option value="">-- Nenhuma --</option>{% for m in metas %}<option value="{{ m.id }}">{{ m.objetivo }}</option>{% endfor %}</select></label>
-                    <button type="submit" class="primary-button" style="background: linear-gradient(135deg, #1a5caf, #c88d1d);">Registar Aporte</button>
+                    <button type="submit" class="primary-button" style="background: linear-gradient(135deg, #1a5caf, #c88d1d);">Registrar Aporte</button>
                 </form>
             </article>
 
@@ -477,7 +482,6 @@
 </nav>
 
 <script>
-// --- EXPANDIR RESUMO ---
 function toggleMetrics() {
     const grid = document.getElementById('metricGrid');
     const icon = document.getElementById('metrics-toggle-icon');
@@ -487,7 +491,6 @@ function toggleMetrics() {
     else { icon.innerText = '▼'; text.innerText = '👁️ Ver Resumo Financeiro'; }
 }
 
-// --- ORÇAMENTO INTELIGENTE (Calculadora JS) ---
 function calcularOrcamentoInteligente() {
     const renda = parseFloat(document.getElementById('renda_base').value);
     const perfil = document.getElementById('perfil_orcamento').value;
@@ -516,7 +519,6 @@ function calcularOrcamentoInteligente() {
     `;
 }
 
-// --- SIMULADOR DE APOSENTADORIA (Calculadora JS) ---
 function calcularAposentadoria() {
     const renda = parseFloat(document.getElementById('sim_renda_mensal').value);
     const anos = parseFloat(document.getElementById('sim_anos').value);
@@ -524,10 +526,7 @@ function calcularAposentadoria() {
     
     if(!renda || renda <= 0 || !anos || anos <= 0) { res.style.display = 'block'; res.innerHTML = '<span style="color:red;">Preencha os dois campos corretamente.</span>'; return; }
     
-    // Regra dos 4% ao ano (renda segura garantida pela inflação) -> Multiplicar a renda por 300
     const patrimonio_necessario = renda * 300;
-    
-    // Simplificando: Juros reais de 6% ao ano (~0.48% ao mês)
     const taxa_mes = 0.00486; 
     const meses = anos * 12;
     const aporte_mensal = patrimonio_necessario * (taxa_mes / (Math.pow(1 + taxa_mes, meses) - 1));
@@ -535,16 +534,15 @@ function calcularAposentadoria() {
     const format = (val) => "R$ " + val.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     res.style.display = 'block';
     res.innerHTML = `
-        <p style="color: var(--green); margin-bottom: 8px;">🎯 Para receber <b>${format(renda)}</b>/mês sem trabalhar, precisa de juntar:</p>
+        <p style="color: var(--green); margin-bottom: 8px;">🎯 Para receber <b>${format(renda)}</b>/mês sem trabalhar, precisa juntar:</p>
         <h3 style="color: var(--text); margin-bottom: 12px; font-size: 1.5rem;">${format(patrimonio_necessario)}</h3>
-        <p>Com um prazo de <b>${anos} anos</b> (estimando juros compostos), você precisará de investir no mínimo:</p>
+        <p>Com um prazo de <b>${anos} anos</b> (estimando juros compostos), precisará investir no mínimo:</p>
         <div style="padding: 10px; background: rgba(200, 141, 29, 0.1); border-radius: 8px; color: var(--gold); text-align: center;">
             Aporte Ideal: <b>${format(aporte_mensal)} por mês</b>
         </div>
     `;
 }
 
-// --- LÓGICAS PADRÃO ---
 function filtrarTabela(inputId, tableId) {
     const filter = document.getElementById(inputId).value.toLowerCase();
     const rows = document.querySelectorAll(`#${tableId} tbody tr`);

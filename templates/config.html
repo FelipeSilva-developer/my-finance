@@ -7,7 +7,10 @@
             <p class="eyebrow">Painel Central</p>
             <h1>Administração Global</h1>
         </div>
-        <a href="{{ url_for('dashboard') }}" class="ghost-button" style="text-decoration: none; padding: 10px 16px;">Voltar</a>
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ url_for('dashboard') }}" class="ghost-button" style="text-decoration: none; padding: 10px 16px;">Voltar</a>
+            <a href="{{ url_for('logout') }}" class="ghost-button danger-button" style="text-decoration: none; padding: 10px 16px;">🚪 Sair</a>
+        </div>
     </div>
 </section>
 
@@ -66,7 +69,7 @@
 
         <div class="table-wrap" style="margin-top: 24px;">
             <table>
-                <thead><tr><th>Username</th><th>Nível</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Usuário</th><th>Nível</th><th>Ações</th></tr></thead>
                 <tbody>
                     {% for u in usuarios %}
                     <tr>
