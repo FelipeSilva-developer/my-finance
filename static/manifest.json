@@ -1,17 +1,21 @@
 {
-  "name": "Controlo Financeiro",
+  "name": "Meu Controle Financeiro",
   "short_name": "Finanças",
-  "description": "App de gestão financeira pessoal.",
+  "description": "Sistema de Gestão Financeira Pessoal",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8f9fa",
+  "background_color": "#f8f2e8",
   "theme_color": "#1a5caf",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }

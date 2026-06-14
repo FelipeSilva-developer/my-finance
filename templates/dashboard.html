@@ -83,6 +83,7 @@
             <div style="max-height: 280px; display: flex; justify-content: center;"><canvas id="categoryChart"></canvas></div>
         </article>
 
+        {% if view_mode == 'mensal' %}
         <article class="panel">
             <div class="panel-heading"><h2>Planejador de Orçamento Inteligente</h2></div>
             <div class="stack-form" style="margin-bottom: 24px; padding: 15px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px solid var(--line);">
@@ -121,6 +122,12 @@
             </div>
             {% else %}<p style="color: var(--muted); text-align: center;">Não existem orçamentos manuais definidos.</p>{% endfor %}
         </article>
+        {% else %}
+        <article class="panel">
+            <div class="panel-heading"><h2>Distribuição de Receitas</h2></div>
+            <div style="max-height: 280px; display: flex; justify-content: center;"><canvas id="receitaChart"></canvas></div>
+        </article>
+        {% endif %}
     </section>
 </div>
 
@@ -592,6 +599,18 @@ new Chart(ctx, { type: 'doughnut', data: { labels: {{ chart_labels|tojson }}, da
 {% if view_mode == 'anual' %}
 const ctxComp = document.getElementById('comparativeChart').getContext('2d');
 new Chart(ctxComp, { type: 'bar', data: { labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'], datasets: [{ label: 'Receitas', data: {{ anual_receitas|tojson }}, backgroundColor: '#0f8a63' }, { label: 'Despesas', data: {{ anual_despesas|tojson }}, backgroundColor: '#d45a3d' }] }});
+
+const ctxRec = document.getElementById('receitaChart');
+if (ctxRec) {
+    new Chart(ctxRec.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ chart_labels_receitas|tojson }},
+            datasets: [{ data: {{ chart_data_receitas|tojson }}, backgroundColor: ['#1a5caf', '#0f8a63', '#c88d1d', '#8e44ad', '#2c3e50', '#d45a3d', '#16a085', '#e67e22', '#c0392b'] }]
+        },
+        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+    });
+}
 {% endif %}
 </script>
 {% endblock %}

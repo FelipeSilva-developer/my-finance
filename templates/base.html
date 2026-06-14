@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Controle Financeiro</title>
+    <title>Meu Controle Financeiro</title>
+    
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
@@ -11,34 +12,52 @@
     <meta name="theme-color" content="#1a5caf">
     
     <style>
-        body.dark-mode { background: #121212; color: #e0e0e0; }
-        body.dark-mode .container, body.dark-mode .panel, body.dark-mode .hero-card, body.dark-mode .metric-card, body.dark-mode .help-section { background: #1e1e1e; box-shadow: none; border: 1px solid #333; color: #e0e0e0; }
-        body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background-color: #333; color: #fff; border: 1px solid #555; }
-        body.dark-mode table { color: #e0e0e0; }
-        body.dark-mode th { background-color: #2c2c2c; color: #aaa; }
+        body.dark-mode { background: #121212; color: #ffffff; }
+        body.dark-mode .container, body.dark-mode .panel, body.dark-mode .hero-card, body.dark-mode .metric-card, body.dark-mode .help-section { background: #1e1e1e; box-shadow: none; border: 1px solid #333; color: #ffffff; }
+        body.dark-mode input, body.dark-mode select, body.dark-mode textarea { background-color: #2a2a2a !important; color: #ffffff !important; border: 1px solid #555 !important; }
+        body.dark-mode input::placeholder { color: #aaaaaa; }
+        body.dark-mode table { color: #ffffff; }
+        body.dark-mode th { background-color: #2c2c2c; color: #ffffff; }
         body.dark-mode td { border-bottom: 1px solid #333; }
-        body.dark-mode .flash-alert { background-color: #333; color: #fff; border: 1px solid #555; }
-        body.dark-mode .ghost-button { background: #333; color: #e0e0e0; border-color: #555; }
-        body.dark-mode .counter-pill { background: #333; border-color: #555; color: #ccc; }
-        body.dark-mode dialog { background: #1e1e1e; color: #e0e0e0; border: 1px solid #333; }
+        body.dark-mode .ghost-button { background: #333 !important; color: #ffffff !important; border-color: #555 !important; }
+        body.dark-mode .counter-pill { background: #333; border-color: #555; color: #ffffff; }
+        body.dark-mode dialog { background: #1e1e1e; color: #ffffff; border: 1px solid #333; }
+        body.dark-mode .metrics-toggle-btn { background: #1e1e1e; color: #ffffff; border-color: #333; }
         body.dark-mode .bottom-nav { background: #1e1e1e; border-top: 1px solid #333; }
-        body.dark-mode .nav-item { color: #888; }
+        body.dark-mode .nav-item { color: #aaaaaa; }
         body.dark-mode .nav-item.active { color: #4fa3ff; }
-        
+        body.dark-mode .eyebrow { color: #cccccc; }
+        body.dark-mode .metric-label { color: #cccccc; }
+        body.dark-mode .tab-btn { color: #cccccc; }
+        body.dark-mode h1, body.dark-mode h2, body.dark-mode h3 { color: #ffffff; }
+
         .btn-flutuante-container { position: fixed; bottom: 85px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 1000; }
         .btn-flutuante { background-color: #1a5caf; color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; text-decoration: none; box-shadow: 0 4px 8px rgba(0,0,0,0.3); transition: 0.2s; cursor: pointer; border: none; font-weight: bold; }
         .btn-tema { background-color: #333; font-size: 20px; }
 
-        /* Banner de Instalação Mobile */
+        /* Banner de Instalação (Android) */
         .install-banner {
             display: none; background: linear-gradient(135deg, #1a5caf, #0f8a63); color: white; 
             padding: 12px; text-align: center; font-weight: bold; cursor: pointer; z-index: 9999;
             box-shadow: 0 4px 10px rgba(0,0,0,0.2); justify-content: center; align-items: center; gap: 8px;
         }
+
+        /* Banner de Instrução (iPhone/iOS) */
+        .ios-install-banner {
+            display: none; background: #f8f9fa; color: #333; padding: 15px; text-align: center;
+            border-bottom: 2px solid #ddd; z-index: 9999; font-size: 0.9rem; line-height: 1.5;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); flex-direction: column; gap: 8px;
+        }
+        body.dark-mode .ios-install-banner { background: #1e1e1e; color: #fff; border-color: #333; }
+        .ios-install-banner button { background: none; border: none; font-weight: bold; color: #1a5caf; margin-top: 5px; cursor: pointer;}
     </style>
 </head>
 <body>
-    <div id="install-app-btn" class="install-banner" onclick="installApp()">📲 Clique aqui para Instalar a App no Telemóvel</div>
+    <div id="install-app-btn" class="install-banner" onclick="installApp()">📲 Clique aqui para Instalar o App</div>
+    <div id="ios-install-banner" class="ios-install-banner">
+        <div>Para instalar no iPhone: toque em <strong>Compartilhar</strong> (ícone quadrado com a seta para cima) na barra do Safari e depois em <strong>Adicionar à Tela de Início</strong>.</div>
+        <button onclick="document.getElementById('ios-install-banner').style.display='none'">Entendi (Fechar)</button>
+    </div>
 
     <main class="container">
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -60,28 +79,44 @@
     {% endif %}
 
     <script>
-        // Lógica de Instalação da PWA (Mobile)
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            document.getElementById('install-app-btn').style.display = 'flex';
-        });
+        // 1. DETECÇÃO DE IOS E ANDROID PARA INSTALAÇÃO
+        const isIos = () => {
+            const userAgent = window.navigator.userAgent.toLowerCase();
+            return /iphone|ipad|ipod/.test(userAgent);
+        };
+        const isInStandaloneMode = () => ('standalone' in window.navigator) && (window.navigator.standalone);
 
-        function installApp() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        document.getElementById('install-app-btn').style.display = 'none';
-                    }
-                    deferredPrompt = null;
-                });
+        if (isIos() && !isInStandaloneMode()) {
+            // É um iPhone e ainda não está instalado
+            document.getElementById('ios-install-banner').style.display = 'flex';
+        } else {
+            // Lógica normal para Android / Desktop
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                document.getElementById('install-app-btn').style.display = 'flex';
+            });
+
+            window.installApp = function() {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            document.getElementById('install-app-btn').style.display = 'none';
+                        }
+                        deferredPrompt = null;
+                    });
+                }
             }
         }
 
-        if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); }); }
+        // 2. SERVICE WORKER
+        if ('serviceWorker' in navigator) { 
+            window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); }); 
+        }
 
+        // 3. MÁSCARA DE MOEDA
         document.addEventListener('input', function (e) {
             if (e.target.classList.contains('currency-mask')) {
                 let value = e.target.value.replace(/\D/g, '');
@@ -93,13 +128,15 @@
             }
         });
 
+        // 4. PREVENÇÃO DE DUPLO CLIQUE
         document.querySelectorAll('form').forEach(form => {
             form.addEventListener('submit', function() {
                 const btn = form.querySelector('button[type="submit"]');
-                if (btn) { btn.style.opacity = '0.7'; btn.innerHTML = 'A processar...'; setTimeout(() => btn.disabled = true, 10); }
+                if (btn) { btn.style.opacity = '0.7'; btn.innerHTML = 'Processando...'; setTimeout(() => btn.disabled = true, 10); }
             });
         });
 
+        // 5. MODO ESCURO
         const toggle = document.getElementById('theme-toggle');
         const body = document.body;
         if (localStorage.getItem('theme') === 'dark') { body.classList.add('dark-mode'); if(toggle) toggle.innerText = '☀️'; }
