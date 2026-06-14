@@ -11,17 +11,19 @@
         </div>
         
         <div class="hero-actions">
-            <nav class="time-navigation">
+            <nav class="time-navigation" style="width: 100%;">
                 <form method="get" action="{{ url_for('dashboard') }}" class="filter-form">
                     <input type="hidden" name="tab" id="hidden-tab-input" value="{{ current_tab }}">
                     <a href="{{ url_for('dashboard', view='mensal', month=hoje.month, year=hoje.year) }}" class="ghost-button" title="Mês Atual" style="text-decoration: none;">Hoje</a>
                     <select name="view" onchange="this.form.submit()">
                         <option value="mensal" {% if view_mode == 'mensal' %}selected{% endif %}>Mensal</option>
-                        <option value="anual" {% if view_mode == 'anual' %}selected{% endif %}>Anual Consolidado</option>
+                        <option value="anual" {% if view_mode == 'anual' %}selected{% endif %}>Anual</option>
                     </select>
                     {% if view_mode == 'mensal' %}
                     <select name="month" onchange="this.form.submit()">
-                        {% for num, nome in meses_nomes.items() %}<option value="{{ num }}" {% if selected_month == num %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+                        {% for num, nome in meses_nomes.items() %}
+                            <option value="{{ num }}" {% if selected_month == num %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
                     </select>
                     {% endif %}
                     <select name="year" onchange="this.form.submit()">
@@ -29,16 +31,19 @@
                     </select>
                 </form>
             </nav>
-            {% if view_mode == 'mensal' %}
-            <a href="{{ url_for('relatorio_pdf', mes=selected_month, ano=selected_year) }}" target="_blank" class="ghost-button" style="text-decoration: none; color: #1a5caf; border-color: #1a5caf; font-weight: bold;">📥 PDF</a>
-            {% endif %}
-            <a href="{{ url_for('perfil') }}" class="ghost-button" style="text-decoration: none;">👤 O meu Perfil</a>
+            
+            <div class="mobile-safe-actions">
+                {% if view_mode == 'mensal' %}<a href="{{ url_for('relatorio_pdf', mes=selected_month, ano=selected_year) }}" target="_blank" class="ghost-button" style="text-decoration: none; color: #1a5caf; border-color: #1a5caf; font-weight: bold;">📥 PDF</a>{% endif %}
+                <a href="{{ url_for('perfil') }}" class="ghost-button" style="text-decoration: none;">👤 Perfil</a>
+                <a href="{{ url_for('logout') }}" class="ghost-button danger-button" style="text-decoration: none;">🚪 Sair</a>
+            </div>
         </div>
     </div>
 
     <div class="tabs-nav">
         <button class="tab-btn" onclick="switchTab('tab-visao')">📊 Visão Geral</button>
-        <button class="tab-btn" onclick="switchTab('tab-cronograma')">⏳ Cronograma</button>
+        <button class="tab-btn" onclick="switchTab('tab-receitas')">📥 Receitas</button>
+        <button class="tab-btn" onclick="switchTab('tab-cronograma')">⏳ Contas</button>
         <button class="tab-btn" onclick="switchTab('tab-cartao')">💳 Cartões</button>
         <button class="tab-btn" onclick="switchTab('tab-patrimonio')">🎯 Metas</button>
     </div>
@@ -52,7 +57,11 @@
 </div>
 {% endif %}
 
-<section class="metric-grid" style="margin-top: 15px;">
+<button class="metrics-toggle-btn" onclick="toggleMetrics()">
+    <span id="metrics-toggle-text">👁️ Ver Resumo Financeiro</span><span id="metrics-toggle-icon">▼</span>
+</button>
+
+<section class="metric-grid" id="metricGrid" style="margin-top: 15px;">
     <article class="metric-card accent-green"><span class="metric-label">Receitas</span><strong class="metric-value text-profit">{{ total_receitas|brl }}</strong></article>
     <article class="metric-card accent-coral"><span class="metric-label">Pagamentos</span><strong class="metric-value text-cost">{{ total_contas_pagas|brl }}</strong></article>
     <article class="metric-card"><span class="metric-label">Pendentes</span><strong class="metric-value" style="color: var(--gold);">{{ total_contas_pendentes|brl }}</strong></article>
@@ -61,12 +70,6 @@
 </section>
 
 <div id="tab-visao" class="tab-content">
-    {% if view_mode == 'anual' %}
-    <section class="summary-grid" style="grid-template-columns: 1fr; margin-top: 22px;">
-        <article class="panel"><div class="panel-heading"><h2>Comparativo Anual</h2></div><div style="max-height: 320px;"><canvas id="comparativeChart"></canvas></div></article>
-    </section>
-    {% endif %}
-
     <section class="summary-grid">
         <article class="panel">
             <div class="panel-heading"><h2>Distribuição de Gastos</h2></div>
@@ -74,20 +77,63 @@
         </article>
 
         <article class="panel">
+            <div class="panel-heading"><h2>Planeador de Orçamento Inteligente</h2></div>
+            <div class="stack-form" style="margin-bottom: 24px; padding: 15px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px solid var(--line);">
+                <label>Sua Renda Principal (R$) <input type="number" id="renda_base" placeholder="Ex: 5000" style="background: white;"></label>
+                <label>Estratégia
+                    <select id="perfil_orcamento" style="background: white;">
+                        <option value="50_30_20">Equilíbrio (50% Essenciais, 30% Lazer, 20% Futuro)</option>
+                        <option value="aposentadoria">Foco Aposentadoria (40% Essenc, 20% Lazer, 40% Futuro)</option>
+                        <option value="dividas">Eliminar Dívidas (60% Essenc, 10% Lazer, 30% Dívidas)</option>
+                    </select>
+                </label>
+                <button type="button" class="primary-button" onclick="calcularOrcamentoInteligente()" style="margin-top: 5px;">Simular Metas Ideais</button>
+                <div id="resultado_orcamento" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem; line-height: 1.6; display: none;"></div>
+            </div>
+
+            <div class="panel-heading"><h2>Os seus Limites Manuais (Regras)</h2></div>
+            <form method="post" action="{{ url_for('add_orcamento') }}" class="stack-form" style="display:flex; gap:10px; align-items:end; margin-bottom: 20px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <label style="flex: 1;">Categoria <select name="categoria" required>{% for c in categorias_despesa %}<option value="{{c.nome}}">{{c.nome}}</option>{% endfor %}</select></label>
+                <label style="flex: 1;">Limite (R$) <input type="text" name="limite" class="currency-mask" required></label>
+                <button type="submit" class="ghost-button" style="height: 46px;">Fixar</button>
+            </form>
+            {% for orc in orcamentos_progresso %}
+            {% set pct_clamped = 100 if orc.pct > 100 else orc.pct %}
+            {% set color = 'var(--green)' if orc.pct < 75 else ('var(--gold)' if orc.pct < 95 else 'var(--coral)') %}
+            <div style="margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: bold; margin-bottom: 4px;">
+                    <span>{{ orc.categoria }}</span><span>{{ orc.gasto|brl }} de {{ orc.limite|brl }} ({{ orc.pct }}%)</span>
+                </div>
+                <div style="width: 100%; height: 10px; background: rgba(0,0,0,0.08); border-radius: 5px; overflow: hidden;">
+                    <div style="width: {{ pct_clamped }}%; height: 100%; background: {{ color }}; transition: width 0.3s ease;"></div>
+                </div>
+                <form method="post" action="{{ url_for('delete_orcamento', id=orc.id) }}" style="text-align: right; margin-top: 4px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" style="background: none; border: none; color: var(--muted); font-size: 0.7rem; cursor: pointer;">Remover</button>
+                </form>
+            </div>
+            {% else %}<p style="color: var(--muted); text-align: center;">Não existem orçamentos manuais definidos.</p>{% endfor %}
+        </article>
+    </section>
+</div>
+
+<div id="tab-receitas" class="tab-content">
+    <section class="summary-grid" style="margin-top: 22px;">
+        <article class="panel">
             <div class="panel-heading"><h2>Lançar Nova Receita</h2></div>
             <form method="post" action="{{ url_for('add_receita') }}" class="stack-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <label>Descrição <input type="text" name="descricao" placeholder="Ex: Adiantamento" required></label>
+                <label>Descrição <input type="text" name="descricao" placeholder="Ex: Salário, Venda" required></label>
                 <div style="display: grid; gap: 14px; grid-template-columns: 1fr 1fr;">
                     <label>Valor (R$) <input type="text" name="valor" class="currency-mask" required></label>
-                    <label>Data <input type="date" name="data" required></label>
+                    <label>Data de Entrada <input type="date" name="data" required></label>
                 </div>
                 <label>Categoria (Origem)
                     <select name="categoria">
                         {% for cr in categorias_receita %}<option value="{{cr.nome}}">{{cr.nome}}</option>{% endfor %}
                     </select>
                 </label>
-                <button type="submit" class="primary-button">Inserir Receita</button>
+                <button type="submit" class="primary-button">Guardar Receita</button>
             </form>
         </article>
     </section>
@@ -95,8 +141,8 @@
     <section style="margin-top: 22px;">
         <article class="panel">
             <div class="panel-heading" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap:10px;">
-                <h2>Histórico de Receitas</h2>
-                <input type="text" id="filtroReceitas" onkeyup="filtrarTabela('filtroReceitas', 'tabelaReceitas')" placeholder="🔍 Procurar receita..." style="max-width: 250px;">
+                <h2>Histórico de Entradas</h2>
+                <input type="text" id="filtroReceitas" onkeyup="filtrarTabela('filtroReceitas', 'tabelaReceitas')" placeholder="🔍 Procurar entrada..." style="max-width: 250px;">
             </div>
             <div class="table-wrap">
                 <table id="tabelaReceitas">
@@ -121,11 +167,7 @@
                                         <label>Descrição <input type="text" name="descricao" value="{{m.descricao}}" required></label>
                                         <label>Valor <input type="text" name="valor" class="currency-mask" value="{{ m.valor | money_input }}" required></label>
                                         <label>Data <input type="date" name="data" value="{{m.data_registro}}"></label>
-                                        <label>Origem 
-                                            <select name="categoria">
-                                                {% for cr in categorias_receita %}<option value="{{cr.nome}}" {% if m.categoria == cr.nome %}selected{% endif %}>{{cr.nome}}</option>{% endfor %}
-                                            </select>
-                                        </label>
+                                        <label>Origem <select name="categoria">{% for cr in categorias_receita %}<option value="{{cr.nome}}" {% if m.categoria == cr.nome %}selected{% endif %}>{{cr.nome}}</option>{% endfor %}</select></label>
                                         <div style="display:flex; gap:10px; margin-top:12px;">
                                             <button type="submit" class="primary-button">Salvar</button>
                                             <button type="button" class="ghost-button" onclick="this.closest('dialog').close()">Cancelar</button>
@@ -147,10 +189,12 @@
 <div id="tab-cronograma" class="tab-content">
     <section class="summary-grid" style="margin-top: 22px; grid-template-columns: 1fr;">
         <article class="panel">
-            <div class="panel-heading"><h2>Agendar Despesa Fixa / Variável</h2></div>
+            <div class="panel-heading"><h2>Agendar Despesa (Fixa, Variável ou Assinatura)</h2></div>
             <form method="post" action="{{ url_for('add_conta') }}" class="stack-form" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <label style="grid-column: 1 / -1;">Descrição <input type="text" name="descricao" placeholder="Ex: Aluguel" required></label>
+                <label style="grid-column: 1 / -1;">Descrição <input type="text" name="descricao" placeholder="Ex: Aluguel, Luz" required></label>
+                <label style="grid-column: 1 / -1; color: var(--muted);">Dívida de Terceiros? (Opcional) <input type="text" name="responsavel" placeholder="Ex: Tia Maria, Amigo X"></label>
+                
                 <label>Tipo 
                     <select name="tipo_lancamento" id="tipo_lancamento" onchange="toggleParc()">
                         <option value="unico">À Vista</option><option value="parcelado">Parcelado</option><option value="assinatura">Assinatura Mensal (Contínua)</option>
@@ -171,11 +215,11 @@
     <section class="panel panel-table" style="margin-top: 22px;">
         <div class="panel-heading" style="display: flex; justify-content: space-between; align-items: center; flex-wrap:wrap; gap:10px;">
             <h2>Cronograma Consolidado</h2>
-            <input type="text" id="filtroContas" onkeyup="filtrarTabela('filtroContas', 'tabelaContas')" placeholder="🔍 Procurar despesa..." style="max-width: 250px;">
+            <input type="text" id="filtroContas" onkeyup="filtrarTabela('filtroContas', 'tabelaContas')" placeholder="🔍 Pesquisar despesa, pessoa..." style="max-width: 250px;">
         </div>
         <div class="table-wrap">
             <table id="tabelaContas">
-                <thead><tr><th>Status</th><th>Descrição</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Status</th><th>Descrição / Responsável</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Ações</th></tr></thead>
                 <tbody>
                     {% for item in itens_cronograma %}
                     {% set vencida = not item.pago and item.data_vencimento < hoje %}
@@ -197,7 +241,10 @@
                                 </form>
                             {% endif %}
                         </td>
-                        <td><strong>{{ item.descricao }}</strong>{% if item.total_parcelas > 1 and item.total_parcelas != 999 %}<br><small style="color: var(--gold);">Parcela {{ item.parcela_atual }}/{{ item.total_parcelas }}</small>{% endif %}</td>
+                        <td>
+                            <strong>{{ item.descricao }}</strong>
+                            {% if item.total_parcelas > 1 and item.total_parcelas != 999 %}<br><small style="color: var(--gold);">Parcela {{ item.parcela_atual }}/{{ item.total_parcelas }}</small>{% endif %}
+                        </td>
                         <td><span class="counter-pill">{{ item.categoria }}</span></td>
                         <td><strong>{{ item.data_vencimento.strftime('%d/%m/%Y') }}</strong></td>
                         <td class="text-cost" style="font-weight: 700;">- {{ item.valor|brl }}</td>
@@ -214,7 +261,7 @@
                                 <h3>Editar Compromisso</h3>
                                 <form method="post" action="{{ url_for('edit_conta', id=item.id) }}" class="stack-form">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <label>Descrição <input type="text" name="descricao" value="{{item.descricao}}" required></label>
+                                    <label>Descrição Completa <input type="text" name="descricao" value="{{item.descricao}}" required></label>
                                     <label>Valor <input type="text" name="valor" class="currency-mask" value="{{ item.valor | money_input }}" required></label>
                                     <label>Vencimento <input type="date" name="data_vencimento" value="{{item.data_vencimento}}"></label>
                                     <div style="display:flex; gap:10px; margin-top:12px;">
@@ -248,6 +295,7 @@
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <label>Cartão <select name="cartao_id" required>{% for cartao in cartoes %}<option value="{{cartao.id}}">{{cartao.nome}}</option>{% endfor %}</select></label>
                 <label>Descrição <input type="text" name="descricao" required></label>
+                <label style="color: var(--muted);">Compra para Terceiros? (Opcional) <input type="text" name="responsavel" placeholder="Ex: Tia Maria"></label>
                 <div style="display: grid; gap: 14px; grid-template-columns: 1fr 1fr;">
                     <label>Valor Total <input type="text" name="valor" class="currency-mask" required></label>
                     <label>Parcelas <input type="number" name="total_parcelas" min="1" value="1" required></label>
@@ -281,7 +329,7 @@
         <div class="panel-heading"><h2>Despesas na Fatura Deste Mês</h2></div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Item</th><th>Status</th><th>Data</th><th>Valor</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Item</th><th>Status</th><th>Data Compra</th><th>Valor Parcela</th><th>Ações</th></tr></thead>
                 <tbody>
                     {% for dc in despesas_cartao %}
                     <tr>
@@ -326,7 +374,7 @@
 <div id="tab-patrimonio" class="tab-content">
     <section class="summary-grid" style="margin-top: 22px;">
         <article class="panel">
-            <div class="panel-heading"><h2>Minhas Metas</h2></div>
+            <div class="panel-heading"><h2>As minhas Metas</h2></div>
             {% for item in metas_progresso %}
             {% set pct_clamped = 100 if item.pct > 100 else item.pct %}
             <div class="meta-item" style="margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px dashed var(--line);">
@@ -345,27 +393,37 @@
             {% else %}
             <p style="color: var(--muted); text-align:center;">Nenhuma meta definida.</p>
             {% endfor %}
+            
+            <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid var(--line);">
+                <div class="panel-heading"><h2>Simulador de Aposentadoria 🧮</h2></div>
+                <div class="stack-form" style="padding: 15px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px solid var(--line);">
+                    <label>Quanto quer receber por mês? (R$) <input type="number" id="sim_renda_mensal" placeholder="Ex: 5000" style="background: white;"></label>
+                    <label>Daqui a quantos anos? <input type="number" id="sim_anos" placeholder="Ex: 20" style="background: white;"></label>
+                    <button type="button" class="primary-button" onclick="calcularAposentadoria()">Calcular Património Necessário</button>
+                    <div id="resultado_aposentadoria" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem; line-height: 1.6; display: none;"></div>
+                </div>
+            </div>
         </article>
 
         <div>
             <article class="panel" style="margin-bottom: 18px;">
-                <div class="panel-heading"><h2>Registrar Aporte</h2></div>
+                <div class="panel-heading"><h2>Registar Aporte</h2></div>
                 <form method="post" action="{{ url_for('add_investimento') }}" class="stack-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <label>Ativo <input type="text" name="ativo" required></label>
                     <label>Valor (R$) <input type="text" name="valor_aporte" class="currency-mask" required></label>
                     <label>Vincular a uma Meta? <select name="meta_id"><option value="">-- Nenhuma --</option>{% for m in metas %}<option value="{{ m.id }}">{{ m.objetivo }}</option>{% endfor %}</select></label>
-                    <button type="submit" class="primary-button" style="background: linear-gradient(135deg, #1a5caf, #c88d1d);">Registrar Aporte</button>
+                    <button type="submit" class="primary-button" style="background: linear-gradient(135deg, #1a5caf, #c88d1d);">Registar Aporte</button>
                 </form>
             </article>
 
             <article class="panel">
-                <div class="panel-heading"><h2>Nova Meta</h2></div>
+                <div class="panel-heading"><h2>Nova Meta Patrimonial</h2></div>
                 <form method="post" action="{{ url_for('add_meta') }}" class="stack-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <label>Objetivo <input type="text" name="objetivo" required></label>
                     <div style="display: grid; gap: 14px; grid-template-columns: 1fr 1fr;">
-                        <label>Valor Alvo <input type="text" name="valor_alvo" class="currency-mask" required></label>
+                        <label>Valor Alvo (R$) <input type="text" name="valor_alvo" class="currency-mask" required></label>
                         <label>Prazo (Meses) <input type="number" name="prazo_meses" min="1" required></label>
                     </div>
                     <button type="submit" class="primary-button" style="background: linear-gradient(135deg, var(--gold), var(--green));">Fixar Meta</button>
@@ -412,12 +470,81 @@
 
 <nav class="bottom-nav">
     <a href="#" class="nav-item active" onclick="switchTab('tab-visao'); return false;"><i>📊</i><span>Visão</span></a>
+    <a href="#" class="nav-item" onclick="switchTab('tab-receitas'); return false;"><i>📥</i><span>Receitas</span></a>
     <a href="#" class="nav-item" onclick="switchTab('tab-cronograma'); return false;"><i>⏳</i><span>Contas</span></a>
     <a href="#" class="nav-item" onclick="switchTab('tab-cartao'); return false;"><i>💳</i><span>Cartões</span></a>
     <a href="#" class="nav-item" onclick="switchTab('tab-patrimonio'); return false;"><i>🎯</i><span>Metas</span></a>
 </nav>
 
 <script>
+// --- EXPANDIR RESUMO ---
+function toggleMetrics() {
+    const grid = document.getElementById('metricGrid');
+    const icon = document.getElementById('metrics-toggle-icon');
+    const text = document.getElementById('metrics-toggle-text');
+    grid.classList.toggle('expanded');
+    if (grid.classList.contains('expanded')) { icon.innerText = '▲'; text.innerText = '🙈 Recolher Resumo'; } 
+    else { icon.innerText = '▼'; text.innerText = '👁️ Ver Resumo Financeiro'; }
+}
+
+// --- ORÇAMENTO INTELIGENTE (Calculadora JS) ---
+function calcularOrcamentoInteligente() {
+    const renda = parseFloat(document.getElementById('renda_base').value);
+    const perfil = document.getElementById('perfil_orcamento').value;
+    const res = document.getElementById('resultado_orcamento');
+    
+    if(!renda || renda <= 0) { res.style.display = 'block'; res.innerHTML = '<span style="color:red;">Insira um valor de renda válido.</span>'; return; }
+    
+    let p_essencial = 0, p_lazer = 0, p_futuro = 0;
+    if(perfil === '50_30_20') { p_essencial = 0.50; p_lazer = 0.30; p_futuro = 0.20; }
+    else if(perfil === 'aposentadoria') { p_essencial = 0.40; p_lazer = 0.20; p_futuro = 0.40; }
+    else if(perfil === 'dividas') { p_essencial = 0.60; p_lazer = 0.10; p_futuro = 0.30; }
+
+    const format = (val) => "R$ " + val.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    res.style.display = 'block';
+    res.innerHTML = `
+        <div style="padding: 10px; background: rgba(15, 138, 99, 0.1); border-radius: 8px; margin-bottom: 5px;">
+            <span style="color: var(--green);">🏠 Gastos Essenciais (${p_essencial*100}%):</span> <b>${format(renda*p_essencial)}</b> máximo/mês.
+        </div>
+        <div style="padding: 10px; background: rgba(200, 141, 29, 0.1); border-radius: 8px; margin-bottom: 5px;">
+            <span style="color: var(--gold);">🏖️ Lazer e Supérfluos (${p_lazer*100}%):</span> <b>${format(renda*p_lazer)}</b> máximo/mês.
+        </div>
+        <div style="padding: 10px; background: rgba(212, 90, 61, 0.1); border-radius: 8px;">
+            <span style="color: var(--coral);">📈 Futuro/Dívidas (${p_futuro*100}%):</span> <b>${format(renda*p_futuro)}</b> por mês.
+        </div>
+        <p style="font-size: 0.8rem; font-weight: normal; margin-top: 10px; color: var(--muted);">Dica: Utilize os valores acima como teto para cadastrar as suas "Regras de Limite" logo abaixo.</p>
+    `;
+}
+
+// --- SIMULADOR DE APOSENTADORIA (Calculadora JS) ---
+function calcularAposentadoria() {
+    const renda = parseFloat(document.getElementById('sim_renda_mensal').value);
+    const anos = parseFloat(document.getElementById('sim_anos').value);
+    const res = document.getElementById('resultado_aposentadoria');
+    
+    if(!renda || renda <= 0 || !anos || anos <= 0) { res.style.display = 'block'; res.innerHTML = '<span style="color:red;">Preencha os dois campos corretamente.</span>'; return; }
+    
+    // Regra dos 4% ao ano (renda segura garantida pela inflação) -> Multiplicar a renda por 300
+    const patrimonio_necessario = renda * 300;
+    
+    // Simplificando: Juros reais de 6% ao ano (~0.48% ao mês)
+    const taxa_mes = 0.00486; 
+    const meses = anos * 12;
+    const aporte_mensal = patrimonio_necessario * (taxa_mes / (Math.pow(1 + taxa_mes, meses) - 1));
+
+    const format = (val) => "R$ " + val.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    res.style.display = 'block';
+    res.innerHTML = `
+        <p style="color: var(--green); margin-bottom: 8px;">🎯 Para receber <b>${format(renda)}</b>/mês sem trabalhar, precisa de juntar:</p>
+        <h3 style="color: var(--text); margin-bottom: 12px; font-size: 1.5rem;">${format(patrimonio_necessario)}</h3>
+        <p>Com um prazo de <b>${anos} anos</b> (estimando juros compostos), você precisará de investir no mínimo:</p>
+        <div style="padding: 10px; background: rgba(200, 141, 29, 0.1); border-radius: 8px; color: var(--gold); text-align: center;">
+            Aporte Ideal: <b>${format(aporte_mensal)} por mês</b>
+        </div>
+    `;
+}
+
+// --- LÓGICAS PADRÃO ---
 function filtrarTabela(inputId, tableId) {
     const filter = document.getElementById(inputId).value.toLowerCase();
     const rows = document.querySelectorAll(`#${tableId} tbody tr`);
@@ -430,7 +557,6 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 function switchTab(tabId) {
-    // Lógica para esconder tudo e mostrar a aba certa
     document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -438,11 +564,9 @@ function switchTab(tabId) {
     const target = document.getElementById(tabId);
     if (target) target.style.display = 'block';
     
-    // Atualiza botão Desktop
     const btnDesktop = document.querySelector(`.tab-btn[onclick="switchTab('${tabId}')"]`);
     if (btnDesktop) btnDesktop.classList.add('active');
 
-    // Atualiza botão Mobile Bottom Nav
     const btnMobile = document.querySelector(`.nav-item[onclick="switchTab('${tabId}'); return false;"]`);
     if (btnMobile) btnMobile.classList.add('active');
     

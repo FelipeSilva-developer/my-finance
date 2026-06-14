@@ -192,8 +192,7 @@ def adicionar_meses(orig_date: date, months: int) -> date:
 
 def calcular_fatura(data_compra: date, dia_fechamento: int, parcela_n: int) -> tuple[int, int]:
     dt = adicionar_meses(data_compra, parcela_n)
-    if data_compra.day >= dia_fechamento:
-        dt = adicionar_meses(dt, 1)
+    if data_compra.day >= dia_fechamento: dt = adicionar_meses(dt, 1)
     return dt.month, dt.year
 
 def login_required(f):
@@ -220,8 +219,7 @@ def normal_user_required(f):
     return decorated_function
 
 @app.route('/sw.js')
-def sw():
-    return app.send_static_file('sw.js')
+def sw(): return app.send_static_file('sw.js')
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -280,8 +278,7 @@ def dashboard():
     for cartao in cartoes:
         if view_mode == "mensal":
             desp_cartao = [dc for dc in despesas_cartao if dc.cartao_id == cartao.id]
-            if desp_cartao:
-                faturas_virtuais.append(FaturaVirtual(cartao.id, cartao.nome, selected_month, selected_year, cartao.dia_vencimento, desp_cartao))
+            if desp_cartao: faturas_virtuais.append(FaturaVirtual(cartao.id, cartao.nome, selected_month, selected_year, cartao.dia_vencimento, desp_cartao))
         else:
             desp_by_mes = {}
             for dc in despesas_cartao:
@@ -356,13 +353,11 @@ def dashboard():
     meses_nomes = {1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"}
 
     return render_template(
-        "dashboard.html",
-        movimentacoes=movimentacoes, itens_cronograma=itens_cronograma, carteira_ativa=carteira_ativa,
+        "dashboard.html", movimentacoes=movimentacoes, itens_cronograma=itens_cronograma, carteira_ativa=carteira_ativa,
         metas_progresso=metas_progresso, orcamentos_progresso=orcamentos_progresso, total_receitas=total_receitas, total_investido=total_investido_mes,
         total_contas_pendentes=total_contas_pendentes, total_contas_pagas=total_contas_pagas, alertas=alertas, cartoes_info=cartoes_info,
         saldo_consolidado=saldo_consolidado, patrimonio_total_acumulado=patrimonio_total_acumulado,
-        chart_labels=chart_labels, chart_data=chart_data, view_mode=view_mode,
-        selected_month=selected_month, selected_year=selected_year, meses_nomes=meses_nomes, hoje=hoje,
+        chart_labels=chart_labels, chart_data=chart_data, view_mode=view_mode, selected_month=selected_month, selected_year=selected_year, meses_nomes=meses_nomes, hoje=hoje,
         categorias_despesa=categorias_despesa, categorias_receita=categorias_receita, cartoes=cartoes, despesas_cartao=despesas_cartao, 
         current_tab=current_tab, anual_receitas=anual_receitas, anual_despesas=anual_despesas, metas=metas_db
     )
@@ -370,13 +365,11 @@ def dashboard():
 @app.route("/meus_cartoes", methods=["GET"])
 @normal_user_required
 def meus_cartoes():
-    cartoes = CartaoCredito.query.filter_by(user_id=session["user_id"]).all()
-    return render_template("meus_cartoes.html", cartoes=cartoes)
+    return render_template("meus_cartoes.html", cartoes=CartaoCredito.query.filter_by(user_id=session["user_id"]).all())
 
 @app.route("/ajuda", methods=["GET"])
 @normal_user_required
-def ajuda():
-    return render_template("ajuda.html")
+def ajuda(): return render_template("ajuda.html")
 
 @app.route("/perfil", methods=["GET", "POST"])
 @normal_user_required
@@ -385,13 +378,10 @@ def perfil():
     if request.method == "POST":
         novo_nome = request.form.get("username").strip()
         nova_senha = request.form.get("senha")
-        
-        if novo_nome != user.username and User.query.filter_by(username=novo_nome).first():
-            flash("Este nome de utilizador já está em uso.", "error")
+        if novo_nome != user.username and User.query.filter_by(username=novo_nome).first(): flash("Este nome de utilizador já está em uso.", "error")
         else:
             user.username = novo_nome
-            if nova_senha:
-                user.password_hash = generate_password_hash(nova_senha)
+            if nova_senha: user.password_hash = generate_password_hash(nova_senha)
             db.session.commit()
             session["username"] = user.username
             flash("Perfil atualizado com sucesso!", "success")
@@ -406,26 +396,20 @@ def relatorio_pdf(mes, ano):
     contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, extract('month', ContaPagar.data_vencimento) == mes, extract('year', ContaPagar.data_vencimento) == ano).order_by(ContaPagar.data_vencimento.asc()).all()
     total_receitas = sum([to_decimal(m.valor) for m in mov_query])
     total_despesas = sum([to_decimal(c.valor) for c in contas_query])
-    saldo = total_receitas - total_despesas
-    return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes=mes, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=saldo)
+    return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes=mes, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=(total_receitas - total_despesas))
 
 @app.route("/configuracoes", methods=["GET"])
 @admin_required
 def configuracoes():
-    categorias_despesa = Categoria.query.filter_by(tipo='despesa').order_by(Categoria.nome.asc()).all()
-    categorias_receita = Categoria.query.filter_by(tipo='receita').order_by(Categoria.nome.asc()).all()
-    usuarios = User.query.all()
-    return render_template("config.html", categorias_despesa=categorias_despesa, categorias_receita=categorias_receita, usuarios=usuarios)
+    return render_template("config.html", categorias_despesa=Categoria.query.filter_by(tipo='despesa').order_by(Categoria.nome.asc()).all(), categorias_receita=Categoria.query.filter_by(tipo='receita').order_by(Categoria.nome.asc()).all(), usuarios=User.query.all())
 
 @app.route("/admin/user/add", methods=["POST"])
 @admin_required
 def add_user():
-    username = request.form.get("username").strip()
-    senha = request.form.get("senha")
-    is_admin = request.form.get("is_admin") == "sim"
+    username, senha = request.form.get("username").strip(), request.form.get("senha")
     if username and senha:
         if not User.query.filter_by(username=username).first():
-            db.session.add(User(username=username, password_hash=generate_password_hash(senha), is_admin=is_admin))
+            db.session.add(User(username=username, password_hash=generate_password_hash(senha), is_admin=(request.form.get("is_admin") == "sim")))
             db.session.commit()
             flash("Usuário criado com sucesso!", "success")
         else: flash("Este nome de usuário já existe.", "error")
@@ -439,26 +423,21 @@ def edit_user(id):
     if senha:
         user.password_hash = generate_password_hash(senha)
         db.session.commit()
-        flash(f"Senha do usuário {user.username} atualizada!", "success")
     return redirect(url_for("configuracoes"))
 
 @app.route("/admin/user/<int:id>/delete", methods=["POST"])
 @admin_required
 def delete_user(id):
-    if id == session["user_id"]:
-        flash("Operação negada. Você não pode excluir a sua própria conta logada.", "error")
-        return redirect(url_for("configuracoes"))
-    user = User.query.get_or_404(id)
-    db.session.delete(user)
-    db.session.commit()
-    flash(f"Usuário '{user.username}' e todos os seus dados foram excluídos do sistema.", "success")
+    if id == session["user_id"]: flash("Operação negada.", "error")
+    else:
+        db.session.delete(User.query.get_or_404(id))
+        db.session.commit()
     return redirect(url_for("configuracoes"))
 
 @app.route("/categoria/add", methods=["POST"])
 @admin_required
 def add_categoria():
-    nome = request.form.get("nome", "").strip()
-    tipo = request.form.get("tipo", "despesa")
+    nome, tipo = request.form.get("nome", "").strip(), request.form.get("tipo", "despesa")
     if nome and not Categoria.query.filter_by(nome=nome, tipo=tipo).first():
         db.session.add(Categoria(nome=nome, tipo=tipo))
         db.session.commit()
@@ -467,19 +446,17 @@ def add_categoria():
 @app.route("/categoria/<int:id>/delete", methods=["POST"])
 @admin_required
 def delete_categoria(id):
-    cat = Categoria.query.get_or_404(id)
-    db.session.delete(cat)
+    db.session.delete(Categoria.query.get_or_404(id))
     db.session.commit()
     return redirect(url_for("configuracoes"))
 
 @app.route("/orcamento/add", methods=["POST"])
 @normal_user_required
 def add_orcamento():
-    categoria = request.form.get("categoria")
-    limite = to_decimal(request.form.get("limite"))
+    categoria, limite = request.form.get("categoria"), to_decimal(request.form.get("limite"))
     if categoria and limite > ZERO:
-        orc_existente = OrcamentoMensal.query.filter_by(user_id=session["user_id"], categoria=categoria).first()
-        if orc_existente: orc_existente.limite = limite
+        orc = OrcamentoMensal.query.filter_by(user_id=session["user_id"], categoria=categoria).first()
+        if orc: orc.limite = limite
         else: db.session.add(OrcamentoMensal(user_id=session["user_id"], categoria=categoria, limite=limite))
         db.session.commit()
     return redirect(url_for("dashboard", tab="tab-visao"))
@@ -487,181 +464,145 @@ def add_orcamento():
 @app.route("/orcamento/<int:id>/delete", methods=["POST"])
 @normal_user_required
 def delete_orcamento(id):
-    orc = OrcamentoMensal.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    db.session.delete(orc)
+    db.session.delete(OrcamentoMensal.query.filter_by(id=id, user_id=session["user_id"]).first_or_404())
     db.session.commit()
     return redirect(url_for("dashboard", tab="tab-visao"))
 
 @app.route("/receita/add", methods=["POST"])
 @normal_user_required
 def add_receita():
-    descricao = request.form.get("descricao", "").strip()
-    categoria = request.form.get("categoria")
-    valor = to_decimal(request.form.get("valor"))
-    data_str = request.form.get("data")
+    descricao, categoria = request.form.get("descricao", "").strip(), request.form.get("categoria")
+    valor, data_str = to_decimal(request.form.get("valor")), request.form.get("data")
     data_mov = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
     db.session.add(Movimentacao(user_id=session["user_id"], descricao=descricao, categoria=categoria, valor=valor, data_registro=data_mov))
     db.session.commit()
-    return redirect(url_for("dashboard", month=data_mov.month, year=data_mov.year, tab="tab-visao"))
+    return redirect(url_for("dashboard", month=data_mov.month, year=data_mov.year, tab="tab-receitas"))
 
 @app.route("/receita/<int:id>/edit", methods=["POST"])
 @normal_user_required
 def edit_receita(id):
     m = Movimentacao.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    m.descricao = request.form.get("descricao", "").strip()
-    m.categoria = request.form.get("categoria")
-    m.valor = to_decimal(request.form.get("valor"))
+    m.descricao, m.categoria, m.valor = request.form.get("descricao", "").strip(), request.form.get("categoria"), to_decimal(request.form.get("valor"))
     data_str = request.form.get("data")
     if data_str: m.data_registro = datetime.strptime(data_str, "%Y-%m-%d").date()
     db.session.commit()
-    return redirect(url_for("dashboard", month=m.data_registro.month, year=m.data_registro.year, tab="tab-visao"))
+    return redirect(url_for("dashboard", month=m.data_registro.month, year=m.data_registro.year, tab="tab-receitas"))
 
 @app.route("/receita/<int:id>/delete", methods=["POST"])
 @normal_user_required
 def delete_receita(id):
     m = Movimentacao.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    month, year = m.data_registro.month, m.data_registro.year
+    mo, yr = m.data_registro.month, m.data_registro.year
     db.session.delete(m)
     db.session.commit()
-    return redirect(url_for("dashboard", month=month, year=year, tab="tab-visao"))
+    return redirect(url_for("dashboard", month=mo, year=yr, tab="tab-receitas"))
 
 @app.route("/conta/add", methods=["POST"])
 @normal_user_required
 def add_conta():
     descricao = request.form.get("descricao", "").strip()
-    categoria = request.form.get("categoria", "Outros")
-    valor_total = to_decimal(request.form.get("valor"))
-    vencimento_str = request.form.get("data_vencimento")
-    tipo_lancamento = request.form.get("tipo_lancamento", "unico")
-    total_parcelas = int(request.form.get("total_parcelas", 1))
-    parcela_inicial = int(request.form.get("parcela_inicial", 1))
+    resp = request.form.get("responsavel", "").strip()
+    if resp: descricao = f"{descricao} [Resp: {resp}]" # TRUQUE DO RESPONSÁVEL SEM MEXER NO BANCO
+    
+    categoria, valor_total = request.form.get("categoria", "Outros"), to_decimal(request.form.get("valor"))
+    venc_str, tipo = request.form.get("data_vencimento"), request.form.get("tipo_lancamento", "unico")
+    total_parc, parc_ini = int(request.form.get("total_parcelas", 1)), int(request.form.get("parcela_inicial", 1))
 
-    if not descricao or valor_total <= ZERO or not vencimento_str: return redirect(url_for("dashboard", tab="tab-visao"))
-    data_venc_inicial = datetime.strptime(vencimento_str, "%Y-%m-%d").date()
+    if not descricao or valor_total <= ZERO or not venc_str: return redirect(url_for("dashboard", tab="tab-cronograma"))
+    venc_ini = datetime.strptime(venc_str, "%Y-%m-%d").date()
 
-    if tipo_lancamento == "parcelado" and total_parcelas > 1:
-        if parcela_inicial > total_parcelas: parcela_inicial = total_parcelas
-        grupo_id = str(uuid.uuid4())[:8]
-        valor_parcela = (valor_total / total_parcelas).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        for i, num_parcela in enumerate(range(parcela_inicial, total_parcelas + 1)):
-            data_venc = adicionar_meses(data_venc_inicial, i)
-            nova_conta = ContaPagar(
-                user_id=session["user_id"], descricao=f"{descricao} ({num_parcela}/{total_parcelas})",
-                categoria=categoria, valor=valor_parcela, data_vencimento=data_venc,
-                pago=False, parcela_atual=num_parcela, total_parcelas=total_parcelas, grupo_recorrencia_id=grupo_id
-            )
-            db.session.add(nova_conta)
-            
-    elif tipo_lancamento == "assinatura":
-        grupo_id = "ass_" + str(uuid.uuid4())[:8]
-        for i in range(60):
-            data_venc = adicionar_meses(data_venc_inicial, i)
-            nova_conta = ContaPagar(
-                user_id=session["user_id"], descricao=f"{descricao} (Assinatura)",
-                categoria=categoria, valor=valor_total, data_vencimento=data_venc,
-                pago=False, parcela_atual=i+1, total_parcelas=999, grupo_recorrencia_id=grupo_id
-            )
-            db.session.add(nova_conta)
-    else:
-        db.session.add(ContaPagar(user_id=session["user_id"], descricao=descricao, categoria=categoria, valor=valor_total, data_vencimento=data_venc_inicial, pago=False))
+    if tipo == "parcelado" and total_parc > 1:
+        if parc_ini > total_parc: parc_ini = total_parc
+        grp = str(uuid.uuid4())[:8]
+        v_parc = (valor_total / total_parc).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        for i, num in enumerate(range(parc_ini, total_parc + 1)):
+            db.session.add(ContaPagar(user_id=session["user_id"], descricao=f"{descricao} ({num}/{total_parc})", categoria=categoria, valor=v_parc, data_vencimento=adicionar_meses(venc_ini, i), pago=False, parcela_atual=num, total_parcelas=total_parc, grupo_recorrencia_id=grp))
+    elif tipo == "assinatura":
+        grp = "ass_" + str(uuid.uuid4())[:8]
+        for i in range(60): db.session.add(ContaPagar(user_id=session["user_id"], descricao=f"{descricao} (Assinatura)", categoria=categoria, valor=valor_total, data_vencimento=adicionar_meses(venc_ini, i), pago=False, parcela_atual=i+1, total_parcelas=999, grupo_recorrencia_id=grp))
+    else: db.session.add(ContaPagar(user_id=session["user_id"], descricao=descricao, categoria=categoria, valor=valor_total, data_vencimento=venc_ini, pago=False))
     db.session.commit()
-    return redirect(url_for("dashboard", month=data_venc_inicial.month, year=data_venc_inicial.year, tab="tab-cronograma"))
+    return redirect(url_for("dashboard", month=venc_ini.month, year=venc_ini.year, tab="tab-cronograma"))
 
 @app.route("/conta/<int:id>/edit", methods=["POST"])
 @normal_user_required
 def edit_conta(id):
     c = ContaPagar.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    c.descricao = request.form.get("descricao", "").strip()
-    c.categoria = request.form.get("categoria")
-    c.valor = to_decimal(request.form.get("valor"))
-    venc_str = request.form.get("data_vencimento")
-    if venc_str: c.data_vencimento = datetime.strptime(venc_str, "%Y-%m-%d").date()
+    c.descricao, c.categoria, c.valor = request.form.get("descricao", "").strip(), request.form.get("categoria"), to_decimal(request.form.get("valor"))
+    v_str = request.form.get("data_vencimento")
+    if v_str: c.data_vencimento = datetime.strptime(v_str, "%Y-%m-%d").date()
     db.session.commit()
     return redirect(url_for("dashboard", month=c.data_vencimento.month, year=c.data_vencimento.year, tab="tab-cronograma"))
 
 @app.route("/conta/<int:conta_id>/toggle", methods=["POST"])
 @normal_user_required
 def toggle_conta(conta_id):
-    conta = ContaPagar.query.filter_by(id=conta_id, user_id=session["user_id"]).first_or_404()
-    conta.pago = not conta.pago
+    c = ContaPagar.query.filter_by(id=conta_id, user_id=session["user_id"]).first_or_404()
+    c.pago = not c.pago
     db.session.commit()
-    return redirect(url_for("dashboard", month=conta.data_vencimento.month, year=conta.data_vencimento.year, tab='tab-cronograma'))
+    return redirect(url_for("dashboard", month=c.data_vencimento.month, year=c.data_vencimento.year, tab='tab-cronograma'))
 
 @app.route("/conta/<int:conta_id>/delete", methods=["POST"])
 @normal_user_required
 def delete_conta(conta_id):
-    conta = ContaPagar.query.filter_by(id=conta_id, user_id=session["user_id"]).first_or_404()
-    m, y = conta.data_vencimento.month, conta.data_vencimento.year
-    if request.form.get("deletar_tudo") == "sim" and conta.grupo_recorrencia_id:
-        ContaPagar.query.filter_by(user_id=session["user_id"], grupo_recorrencia_id=conta.grupo_recorrencia_id, pago=False).delete()
-    else: db.session.delete(conta)
+    c = ContaPagar.query.filter_by(id=conta_id, user_id=session["user_id"]).first_or_404()
+    m, y = c.data_vencimento.month, c.data_vencimento.year
+    if request.form.get("deletar_tudo") == "sim" and c.grupo_recorrencia_id: ContaPagar.query.filter_by(user_id=session["user_id"], grupo_recorrencia_id=c.grupo_recorrencia_id, pago=False).delete()
+    else: db.session.delete(c)
     db.session.commit()
     return redirect(url_for("dashboard", month=m, year=y, tab='tab-cronograma'))
 
 @app.route("/cartao/add", methods=["POST"])
 @normal_user_required
 def add_cartao():
-    nome = request.form.get("nome", "").strip()
-    limite = to_decimal(request.form.get("limite"))
-    dia_f = int(request.form.get("dia_fechamento", 5))
-    dia_v = int(request.form.get("dia_vencimento", 10))
+    nome, limite = request.form.get("nome", "").strip(), to_decimal(request.form.get("limite"))
     if nome and limite > ZERO:
-        db.session.add(CartaoCredito(user_id=session["user_id"], nome=nome, limite=limite, dia_fechamento=dia_f, dia_vencimento=dia_v))
+        db.session.add(CartaoCredito(user_id=session["user_id"], nome=nome, limite=limite, dia_fechamento=int(request.form.get("dia_fechamento", 5)), dia_vencimento=int(request.form.get("dia_vencimento", 10))))
         db.session.commit()
     return redirect(url_for("meus_cartoes"))
 
 @app.route("/cartao/<int:id>/edit", methods=["POST"])
 @normal_user_required
 def edit_cartao(id):
-    cartao = CartaoCredito.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    cartao.nome = request.form.get("nome", "").strip()
-    cartao.limite = to_decimal(request.form.get("limite"))
-    cartao.dia_fechamento = int(request.form.get("dia_fechamento", 5))
-    cartao.dia_vencimento = int(request.form.get("dia_vencimento", 10))
+    c = CartaoCredito.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
+    c.nome, c.limite, c.dia_fechamento, c.dia_vencimento = request.form.get("nome", "").strip(), to_decimal(request.form.get("limite")), int(request.form.get("dia_fechamento", 5)), int(request.form.get("dia_vencimento", 10))
     db.session.commit()
     return redirect(url_for("meus_cartoes"))
 
 @app.route("/cartao/<int:id>/delete", methods=["POST"])
 @normal_user_required
 def delete_cartao(id):
-    cartao = CartaoCredito.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    db.session.delete(cartao)
+    db.session.delete(CartaoCredito.query.filter_by(id=id, user_id=session["user_id"]).first_or_404())
     db.session.commit()
     return redirect(url_for("meus_cartoes"))
 
 @app.route("/cartao/despesa/add", methods=["POST"])
 @normal_user_required
 def add_despesa_cartao():
-    cartao_id = int(request.form.get("cartao_id", 0))
+    cid = int(request.form.get("cartao_id", 0))
     descricao = request.form.get("descricao", "").strip()
-    valor_total = to_decimal(request.form.get("valor"))
-    data_str = request.form.get("data_compra")
-    categoria = request.form.get("categoria", "Outros")
-    total_parcelas = int(request.form.get("total_parcelas", 1))
+    resp = request.form.get("responsavel", "").strip()
+    if resp: descricao = f"{descricao} [Resp: {resp}]" # TRUQUE DO RESPONSÁVEL AQUI TAMBÉM
+    
+    valor_t, d_str = to_decimal(request.form.get("valor")), request.form.get("data_compra")
+    cat, t_parc = request.form.get("categoria", "Outros"), int(request.form.get("total_parcelas", 1))
 
-    cartao = CartaoCredito.query.filter_by(id=cartao_id, user_id=session["user_id"]).first_or_404()
-    data_compra = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
-    grupo_id = str(uuid.uuid4())[:8] if total_parcelas > 1 else None
-    valor_parcela = (valor_total / total_parcelas).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    cartao = CartaoCredito.query.filter_by(id=cid, user_id=session["user_id"]).first_or_404()
+    d_compra = datetime.strptime(d_str, "%Y-%m-%d").date() if d_str else get_today_br()
+    grp = str(uuid.uuid4())[:8] if t_parc > 1 else None
+    v_parc = (valor_t / t_parc).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-    for i in range(total_parcelas):
-        m_fat, y_fat = calcular_fatura(data_compra, cartao.dia_fechamento, i)
-        desc = f"{descricao} ({i+1}/{total_parcelas})" if total_parcelas > 1 else descricao
-        db.session.add(DespesaCartao(
-            user_id=session["user_id"], descricao=desc, valor=valor_parcela, data_compra=data_compra,
-            mes_fatura=m_fat, ano_fatura=y_fat, parcela_atual=i+1, total_parcelas=total_parcelas,
-            categoria=categoria, pago=False, cartao_id=cartao_id, grupo_id=grupo_id
-        ))
+    for i in range(t_parc):
+        mf, yf = calcular_fatura(d_compra, cartao.dia_fechamento, i)
+        db.session.add(DespesaCartao(user_id=session["user_id"], descricao=(f"{descricao} ({i+1}/{t_parc})" if t_parc > 1 else descricao), valor=v_parc, data_compra=d_compra, mes_fatura=mf, ano_fatura=yf, parcela_atual=i+1, total_parcelas=t_parc, categoria=cat, pago=False, cartao_id=cid, grupo_id=grp))
     db.session.commit()
-    return redirect(url_for("dashboard", month=data_compra.month, year=data_compra.year, tab="tab-cartao"))
+    return redirect(url_for("dashboard", month=d_compra.month, year=d_compra.year, tab="tab-cartao"))
 
 @app.route("/cartao/despesa/<int:id>/edit", methods=["POST"])
 @normal_user_required
 def edit_despesa_cartao(id):
     dc = DespesaCartao.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    dc.descricao = request.form.get("descricao", "").strip()
-    dc.valor = to_decimal(request.form.get("valor"))
-    dc.categoria = request.form.get("categoria")
+    dc.descricao, dc.valor, dc.categoria = request.form.get("descricao", "").strip(), to_decimal(request.form.get("valor")), request.form.get("categoria")
     db.session.commit()
     return redirect(url_for("dashboard", month=dc.mes_fatura, year=dc.ano_fatura, tab="tab-cartao"))
 
@@ -678,8 +619,7 @@ def toggle_despesa_cartao(id):
 def delete_despesa_cartao(id):
     dc = DespesaCartao.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
     m, y = dc.mes_fatura, dc.ano_fatura
-    if request.form.get("deletar_tudo") == "sim" and dc.grupo_id:
-        DespesaCartao.query.filter_by(user_id=session["user_id"], grupo_id=dc.grupo_id).delete()
+    if request.form.get("deletar_tudo") == "sim" and dc.grupo_id: DespesaCartao.query.filter_by(user_id=session["user_id"], grupo_id=dc.grupo_id).delete()
     else: db.session.delete(dc)
     db.session.commit()
     return redirect(url_for("dashboard", month=m, year=y, tab="tab-cartao"))
@@ -687,38 +627,29 @@ def delete_despesa_cartao(id):
 @app.route("/fatura/<int:cartao_id>/<int:mes>/<int:ano>/toggle", methods=["POST"])
 @normal_user_required
 def toggle_fatura(cartao_id, mes, ano):
-    despesas = DespesaCartao.query.filter_by(user_id=session["user_id"], cartao_id=cartao_id, mes_fatura=mes, ano_fatura=ano).all()
-    if despesas:
-        all_paid = all(d.pago for d in despesas)
-        for d in despesas: d.pago = not all_paid
+    ds = DespesaCartao.query.filter_by(user_id=session["user_id"], cartao_id=cartao_id, mes_fatura=mes, ano_fatura=ano).all()
+    if ds:
+        p = not all(d.pago for d in ds)
+        for d in ds: d.pago = p
         db.session.commit()
     return redirect(url_for("dashboard", month=mes, year=ano, tab="tab-cronograma"))
 
 @app.route("/investimento/add", methods=["POST"])
 @normal_user_required
 def add_investimento():
-    ativo = request.form.get("ativo", "").strip().upper()
-    tipo = request.form.get("tipo", "Renda Fixa")
-    taxa = request.form.get("taxa_rendimento", "").strip()
-    valor = to_decimal(request.form.get("valor_aporte"))
-    data_str = request.form.get("data_aporte")
     meta_id = request.form.get("meta_id")
-    data_ap = datetime.strptime(data_str, "%Y-%m-%d").date() if data_str else get_today_br()
-    db.session.add(Investimento(user_id=session["user_id"], ativo=ativo, tipo=tipo, taxa_rendimento=taxa, valor_aporte=valor, valor_atual=valor, data_aporte=data_ap, meta_id=int(meta_id) if meta_id else None))
+    data_ap = datetime.strptime(request.form.get("data_aporte"), "%Y-%m-%d").date() if request.form.get("data_aporte") else get_today_br()
+    v = to_decimal(request.form.get("valor_aporte"))
+    db.session.add(Investimento(user_id=session["user_id"], ativo=request.form.get("ativo", "").strip().upper(), tipo=request.form.get("tipo", "Renda Fixa"), taxa_rendimento=request.form.get("taxa_rendimento", "").strip(), valor_aporte=v, valor_atual=v, data_aporte=data_ap, meta_id=int(meta_id) if meta_id else None))
     db.session.commit()
-    return redirect(url_for("dashboard", month=data_ap.month, year=data_ap.year, tab="tab-patrimonio"))
+    return redirect(url_for("dashboard", tab="tab-patrimonio"))
 
 @app.route("/investimento/<int:id>/edit", methods=["POST"])
 @normal_user_required
 def edit_investimento(id):
     i = Investimento.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    i.ativo = request.form.get("ativo", "").strip().upper()
-    i.tipo = request.form.get("tipo")
-    i.taxa_rendimento = request.form.get("taxa_rendimento", "").strip()
-    i.valor_aporte = to_decimal(request.form.get("valor_aporte"))
-    i.valor_atual = to_decimal(request.form.get("valor_atual"))
-    data_str = request.form.get("data_aporte")
-    if data_str: i.data_aporte = datetime.strptime(data_str, "%Y-%m-%d").date()
+    i.ativo, i.tipo, i.taxa_rendimento, i.valor_aporte, i.valor_atual = request.form.get("ativo", "").strip().upper(), request.form.get("tipo"), request.form.get("taxa_rendimento", "").strip(), to_decimal(request.form.get("valor_aporte")), to_decimal(request.form.get("valor_atual"))
+    if request.form.get("data_aporte"): i.data_aporte = datetime.strptime(request.form.get("data_aporte"), "%Y-%m-%d").date()
     db.session.commit()
     return redirect(url_for("dashboard", tab="tab-patrimonio"))
 
@@ -726,9 +657,8 @@ def edit_investimento(id):
 @normal_user_required
 def update_investimento(id):
     inv = Investimento.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    novo_valor = to_decimal(request.form.get("valor_atual"))
-    if novo_valor >= ZERO:
-        inv.valor_atual = novo_valor
+    if to_decimal(request.form.get("valor_atual")) >= ZERO:
+        inv.valor_atual = to_decimal(request.form.get("valor_atual"))
         db.session.commit()
     return redirect(url_for("dashboard", tab="tab-patrimonio"))
 
@@ -736,7 +666,7 @@ def update_investimento(id):
 @normal_user_required
 def resgatar_investimento(id):
     inv = Investimento.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    db.session.add(Movimentacao(user_id=session["user_id"], descricao=f"Resgate: {inv.ativo} ({inv.taxa_rendimento})", categoria="Renda Extra", valor=inv.valor_atual, data_registro=get_today_br()))
+    db.session.add(Movimentacao(user_id=session["user_id"], descricao=f"Resgate: {inv.ativo}", categoria="Investimentos", valor=inv.valor_atual, data_registro=get_today_br()))
     inv.resgatado = True
     inv.meta_id = None 
     db.session.commit()
@@ -745,38 +675,31 @@ def resgatar_investimento(id):
 @app.route("/investimento/<int:id>/delete", methods=["POST"])
 @normal_user_required
 def delete_investimento(id):
-    inv = Investimento.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    db.session.delete(inv)
+    db.session.delete(Investimento.query.filter_by(id=id, user_id=session["user_id"]).first_or_404())
     db.session.commit()
     return redirect(url_for("dashboard", tab="tab-patrimonio"))
 
 @app.route("/meta/add", methods=["POST"])
 @normal_user_required
 def add_meta():
-    obj = request.form.get("objetivo", "").strip()
-    alvo = to_decimal(request.form.get("valor_alvo"))
-    prazo = int(request.form.get("prazo_meses", 12))
-    if obj and alvo > ZERO and prazo > 0:
-        db.session.add(MetaPatrimonial(user_id=session["user_id"], objetivo=obj, valor_alvo=alvo, prazo_meses=prazo))
-        db.session.commit()
+    db.session.add(MetaPatrimonial(user_id=session["user_id"], objetivo=request.form.get("objetivo", "").strip(), valor_alvo=to_decimal(request.form.get("valor_alvo")), prazo_meses=int(request.form.get("prazo_meses", 12))))
+    db.session.commit()
     return redirect(url_for("dashboard", tab="tab-patrimonio"))
 
 @app.route("/meta/<int:id>/edit", methods=["POST"])
 @normal_user_required
 def edit_meta(id):
     m = MetaPatrimonial.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    m.objetivo = request.form.get("objetivo", "").strip()
-    m.valor_alvo = to_decimal(request.form.get("valor_alvo"))
-    m.prazo_meses = int(request.form.get("prazo_meses", 12))
+    m.objetivo, m.valor_alvo, m.prazo_meses = request.form.get("objetivo", "").strip(), to_decimal(request.form.get("valor_alvo")), int(request.form.get("prazo_meses", 12))
     db.session.commit()
     return redirect(url_for("dashboard", tab="tab-patrimonio"))
 
 @app.route("/meta/<int:id>/delete", methods=["POST"])
 @normal_user_required
 def delete_meta(id):
-    meta = MetaPatrimonial.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
-    for inv in meta.aportes: inv.meta_id = None
-    db.session.delete(meta)
+    m = MetaPatrimonial.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
+    for inv in m.aportes: inv.meta_id = None
+    db.session.delete(m)
     db.session.commit()
     return redirect(url_for("dashboard", tab="tab-patrimonio"))
 
@@ -785,16 +708,10 @@ def open_browser(): webbrowser.open("http://127.0.0.1:5005")
 with app.app_context():
     db.create_all()
     if User.query.count() == 0:
-        admin_user = os.environ.get("ADMIN_USERNAME", "admin")
-        admin_pass = os.environ.get("ADMIN_PASSWORD", "senha_segura_123")
-        admin = User(username=admin_user, password_hash=generate_password_hash(admin_pass), is_admin=True)
-        db.session.add(admin)
+        db.session.add(User(username=os.environ.get("ADMIN_USERNAME", "admin"), password_hash=generate_password_hash(os.environ.get("ADMIN_PASSWORD", "senha_segura_123")), is_admin=True))
         db.session.commit()
-        
     if Categoria.query.count() == 0:
-        defaults = [('Moradia', 'despesa'), ('Transporte', 'despesa'), ('Lazer', 'despesa'), ('Outros', 'despesa'), 
-                    ('Salário', 'receita'), ('Renda Extra', 'receita'), ('Investimentos', 'receita')]
-        for n, t in defaults: db.session.add(Categoria(nome=n, tipo=t))
+        for n, t in [('Moradia', 'despesa'), ('Transporte', 'despesa'), ('Lazer', 'despesa'), ('Outros', 'despesa'), ('Salário', 'receita'), ('Renda Extra', 'receita'), ('Investimentos', 'receita')]: db.session.add(Categoria(nome=n, tipo=t))
         db.session.commit()
 
 if __name__ == "__main__":

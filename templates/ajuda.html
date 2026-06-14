@@ -2,54 +2,50 @@
 
 {% block content %}
 <div class="header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-    <h2>Guia Rápido de Uso</h2>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Voltar ao Início</a>
+    <h2>Guia Especialista de Uso</h2>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary" style="padding: 10px; background: white; border: 1px solid #ccc; border-radius: 8px; text-decoration: none; color: black; font-weight: bold;">Voltar ao Início</a>
 </div>
 
 <div class="help-section">
     <h3>📊 Visão Geral e Orçamentos</h3>
-    <p>A aba principal do sistema mostra o resumo do seu mês. Aqui você vê o que entrou, o que saiu e o seu saldo real.</p>
+    <p>A aba principal (Visão Geral) é o seu painel de controlo. Ela diz-lhe para onde está a ir o seu dinheiro.</p>
     <ul>
-        <li><strong>Adicionar Receita:</strong> Registre os seus ganhos (salários, rendas extras). Eles aumentam o seu saldo consolidado.</li>
-        <li><strong>Orçamentos:</strong> Defina limites de gastos por categoria (Ex: "Até R$ 500 em Lazer"). A barra vai encher conforme você gasta, ficando vermelha se ultrapassar o limite.</li>
+        <li><strong>Orçamento Inteligente:</strong> Antes de colocar os seus limites manuais, insira a sua renda na calculadora e escolha um perfil (Ex: Eliminar Dívidas). O sistema dá-lhe o teto ideal para gastar em Lazer e Despesas Essenciais.</li>
+        <li><strong>Limites Manuais:</strong> Com os números em mente, defina o limite por categoria. Se ultrapassar, a barra fica vermelha!</li>
+        <li><strong>Resumo Expansível:</strong> No telemóvel, pode clicar no botão "👁️ Ver Resumo Financeiro" no topo para esconder/mostrar as caixas coloridas de saldo.</li>
     </ul>
 </div>
 
 <div class="help-section">
-    <h3>🗓️ Cronograma (Contas a Pagar)</h3>
-    <p>Aqui você lança as suas despesas fixas ou parceladas que não foram passadas no cartão de crédito (Ex: Água, Luz, Aluguel).</p>
+    <h3>📥 Receitas (Entradas de Dinheiro)</h3>
+    <p>Separamos as receitas numa aba própria para manter a sua Visão Geral limpa e focada em gráficos.</p>
     <ul>
-        <li><strong>Lançamento Único:</strong> Uma conta normal de um mês só.</li>
-        <li><strong>Lançamento Parcelado:</strong> Se você dividir uma compra na loja (sem ser no cartão), o sistema criará as parcelas automaticamente para os próximos meses, por isso coloque o valor cheio da compra</li>
-        <li><strong>Dar Baixa:</strong> Ao pagar a conta, clique no botão de "check" (✔️). O valor sairá das pendências e será contabilizado como gasto.</li>
+        <li><strong>Registar Ganhos:</strong> Insira o seu salário, vendas extras ou freelas aqui. Ao adicionar uma receita, o seu saldo consolidado global aumenta.</li>
+        <li><strong>Pesquisa Rápida:</strong> Tem uma lupa no topo da lista. Escreva o nome do freela para ver rapidamente quando e quanto lhe pagaram.</li>
     </ul>
 </div>
 
 <div class="help-section">
-    <h3>💳 Cartões de Crédito</h3>
-    <p>O sistema faz a gestão inteligente das suas faturas.</p>
+    <h3>⏳ Contas e 💳 Cartões (O Truque do Responsável)</h3>
+    <p>O coração do sistema financeiro. Aqui lança o que deve ao mundo (ou o que os outros lhe devem!).</p>
     <ul>
-        <li><strong>Passo 1:</strong> Vá em "Meus Cartões" e cadastre o seu cartão (nome, limite, dia de fechamento e vencimento).</li>
-        <li><strong>Passo 2:</strong> Lance uma despesa na aba de Cartões. Informe a data da compra. O sistema saberá automaticamente em qual fatura essa compra vai cair (antes ou depois do fechamento).</li>
-        <li><strong>Fatura Virtual:</strong> Na aba de Cronograma, o sistema junta todos os gastos de um cartão e cria uma "Fatura Virtual". Quando você paga a fatura virtual, todas as despesas daquele mês constam como pagas automaticamente!</li>
+        <li><strong>Dívida de Terceiros:</strong> Quando for lançar uma despesa ou compra de cartão, vai ver o campo "(Opcional) Responsável". Use isto quando a sua tia usar o seu cartão. O nome dela aparecerá na fatura. Depois, é só pesquisar "Tia Maria" na barra de pesquisa e o sistema filtra exatamente o que ela tem de lhe pagar!</li>
+        <li><strong>Assinatura Contínua:</strong> Escolha este tipo para contas de Netflix, Água e Telemóvel. O sistema regista automaticamente a conta para os próximos 5 anos (60 meses) para não ter de o fazer de novo.</li>
+        <li><strong>Cartões:</strong> Registe a despesa com a data da compra. O sistema decide sozinho se essa compra cai na fatura atual ou só no mês seguinte.</li>
     </ul>
 </div>
 
 <div class="help-section">
-    <h3>💰 Patrimônio e Metas</h3>
-    <p>Para quem quer investir e acompanhar o crescimento do dinheiro.</p>
+    <h3>🎯 Património e Aposentadoria</h3>
+    <p>A aba onde os sonhos ganham um plano de ação real.</p>
     <ul>
-        <li><strong>Criar Meta:</strong> Defina um objetivo (Ex: "Comprar um Carro", R$ 50.000 em 24 meses). O sistema vai calcular quanto você precisa guardar por mês.</li>
-        <li><strong>Investimentos:</strong> Registre os seus aportes em CDB, Tesouro, Ações, etc. Você pode vincular um investimento a uma Meta para ver a barra de progresso encher.</li>
-        <li><strong>Atualizar/Resgatar:</strong> Todo mês você pode atualizar o valor do investimento para refletir os juros. Se resgatar o dinheiro, ele volta para o seu fluxo de caixa como "Renda Extra".</li>
+        <li><strong>Simulador Mágico:</strong> Quer ganhar R$ 5.000 por mês daqui a 20 anos? Preencha os dois campos na calculadora de aposentadoria. O sistema usa a regra económica dos juros reais e diz-lhe qual o valor do aporte mensal necessário para chegar lá.</li>
+        <li><strong>Metas Visuais:</strong> Adicione a meta "Comprar Carro". Cada vez que investir um dinheiro (Aporte), o sistema enche a barra de progresso da meta.</li>
     </ul>
 </div>
 
-<div class="help-section" style="background-color: #f8f9fa; border-left: 4px solid #1a5caf;">
-    <h3>📞 Precisa de mais ajuda?</h3>
-    <p>Se você encontrou algum erro ou tem dúvidas adicionais sobre como usar a plataforma, entre em contato com o suporte técnico:</p>
-    <ul>
-        <li><strong>WhatsApp:</strong> (11) 95827-4546</li>
-    </ul>
+<div class="help-section" style="background-color: rgba(15, 138, 99, 0.05); border-left: 4px solid var(--green);">
+    <h3>📲 Dica Especialista: Instale a App</h3>
+    <p>O sistema foi construído com tecnologia PWA. Se abrir no navegador do telemóvel (Safari ou Chrome), irá ver uma barra no topo a dizer "Instalar App". Ao clicar, o seu telemóvel fará o download da aplicação e colocará o ícone no seu ecrã principal. Terá acesso rápido e com ecrã inteiro!</p>
 </div>
 {% endblock %}
