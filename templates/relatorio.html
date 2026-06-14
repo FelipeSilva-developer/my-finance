@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="pt-PT">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Relatório Financeiro - {{ "%02d"|format(mes) }}/{{ ano }}</title>
+    <title>Relatório Financeiro - {{ mes_texto }}</title>
     <style>
         body { font-family: Arial, sans-serif; color: #333; margin: 40px; }
         .cabecalho { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
@@ -24,13 +24,13 @@
     
     <div class="cabecalho">
         <h1>Relatório Consolidado</h1>
-        <p>Mês de Referência: {{ "%02d"|format(mes) }}/{{ ano }}</p>
+        <p>Referência: {{ mes_texto }}</p>
     </div>
 
     <div class="resumo">
         <span>Receitas: <span class="positivo">{{ total_receitas | brl }}</span></span>
         <span>Despesas: <span class="negativo">{{ total_despesas | brl }}</span></span>
-        <span>Saldo do Mês: {{ saldo | brl }}</span>
+        <span>Saldo do Período: {{ saldo | brl }}</span>
     </div>
 
     <h3>Entradas (Receitas)</h3>
@@ -39,17 +39,17 @@
         {% for r in receitas %}
         <tr><td>{{ r.data_registro.strftime('%d/%m/%Y') }}</td><td>{{ r.descricao }}</td><td>{{ r.categoria }}</td><td class="valor positivo">{{ r.valor | brl }}</td></tr>
         {% else %}
-        <tr><td colspan="4" style="text-align: center;">Nenhuma receita registada neste mês.</td></tr>
+        <tr><td colspan="4" style="text-align: center;">Nenhuma receita registrada neste período.</td></tr>
         {% endfor %}
     </table>
 
-    <h3>Saídas (Contas a Pagar)</h3>
+    <h3>Saídas (Contas a Pagar / Cartão)</h3>
     <table>
         <tr><th>Vencimento</th><th>Descrição</th><th>Status</th><th class="valor">Valor</th></tr>
         {% for d in despesas %}
         <tr><td>{{ d.data_vencimento.strftime('%d/%m/%Y') }}</td><td>{{ d.descricao }}</td><td>{{ 'Pago' if d.pago else 'Pendente' }}</td><td class="valor negativo">{{ d.valor | brl }}</td></tr>
         {% else %}
-        <tr><td colspan="4" style="text-align: center;">Nenhuma despesa registada neste mês.</td></tr>
+        <tr><td colspan="4" style="text-align: center;">Nenhuma despesa registrada neste período.</td></tr>
         {% endfor %}
     </table>
 

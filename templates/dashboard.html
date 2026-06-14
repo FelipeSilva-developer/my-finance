@@ -33,7 +33,8 @@
             </nav>
             
             <div class="mobile-safe-actions">
-                {% if view_mode == 'mensal' %}<a href="{{ url_for('relatorio_pdf', mes=selected_month, ano=selected_year) }}" target="_blank" class="ghost-button" style="text-decoration: none; color: #1a5caf; border-color: #1a5caf; font-weight: bold;">📥 PDF</a>{% endif %}
+                {% set pdf_mes = selected_month if view_mode == 'mensal' else 0 %}
+                <a href="{{ url_for('relatorio_pdf', mes=pdf_mes, ano=selected_year) }}" target="_blank" class="ghost-button" style="text-decoration: none; color: #1a5caf; border-color: #1a5caf; font-weight: bold;">📥 PDF</a>
                 <a href="{{ url_for('perfil') }}" class="ghost-button" style="text-decoration: none;">👤 Perfil</a>
                 <a href="{{ url_for('logout') }}" class="ghost-button danger-button" style="text-decoration: none;">🚪 Sair</a>
             </div>
@@ -70,6 +71,12 @@
 </section>
 
 <div id="tab-visao" class="tab-content">
+    {% if view_mode == 'anual' %}
+    <section class="summary-grid" style="grid-template-columns: 1fr; margin-top: 22px;">
+        <article class="panel"><div class="panel-heading"><h2>Comparativo Anual</h2></div><div style="max-height: 320px;"><canvas id="comparativeChart"></canvas></div></article>
+    </section>
+    {% endif %}
+
     <section class="summary-grid">
         <article class="panel">
             <div class="panel-heading"><h2>Distribuição de Gastos</h2></div>
@@ -321,7 +328,7 @@
                 </div>
             </div>
             {% endfor %}
-            <div style="text-align: right; margin-top: 15px;"><a href="{{ url_for('meus_cartoes') }}" class="ghost-button" style="font-size: 0.8rem;">Gerir Cartões</a></div>
+            <div style="text-align: right; margin-top: 15px;"><a href="{{ url_for('meus_cartoes') }}" class="ghost-button" style="font-size: 0.8rem;">Gerenciar Cartões</a></div>
         </article>
     </section>
 
@@ -534,9 +541,9 @@ function calcularAposentadoria() {
     const format = (val) => "R$ " + val.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     res.style.display = 'block';
     res.innerHTML = `
-        <p style="color: var(--green); margin-bottom: 8px;">🎯 Para receber <b>${format(renda)}</b>/mês sem trabalhar, precisa juntar:</p>
+        <p style="color: var(--green); margin-bottom: 8px;">🎯 Para receber <b>${format(renda)}</b>/mês sem trabalhar, você precisa juntar:</p>
         <h3 style="color: var(--text); margin-bottom: 12px; font-size: 1.5rem;">${format(patrimonio_necessario)}</h3>
-        <p>Com um prazo de <b>${anos} anos</b> (estimando juros compostos), precisará investir no mínimo:</p>
+        <p>Com um prazo de <b>${anos} anos</b> (estimando juros compostos), você precisará investir no mínimo:</p>
         <div style="padding: 10px; background: rgba(200, 141, 29, 0.1); border-radius: 8px; color: var(--gold); text-align: center;">
             Aporte Ideal: <b>${format(aporte_mensal)} por mês</b>
         </div>

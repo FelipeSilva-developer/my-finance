@@ -8,6 +8,7 @@ import webbrowser
 from threading import Timer
 from pathlib import Path
 import pytz
+import calendar
 
 from flask import Flask, flash, redirect, render_template, request, url_for, session
 from flask_sqlalchemy import SQLAlchemy
@@ -257,15 +258,23 @@ def dashboard():
     categorias_receita = Categoria.query.filter_by(tipo='receita').order_by(Categoria.nome.asc()).all()
     cartoes = CartaoCredito.query.filter_by(user_id=uid).all()
 
+    # CORREÇÃO DEFINITIVA DO FILTRO DE DATAS (Para funcionar no Supabase perfeitamente)
     if view_mode == "mensal":
-        mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, extract('month', Movimentacao.data_registro) == selected_month, extract('year', Movimentacao.data_registro) == selected_year)
-        contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, extract('month', ContaPagar.data_vencimento) == selected_month, extract('year', ContaPagar.data_vencimento) == selected_year)
-        inv_query = Investimento.query.filter(Investimento.user_id==uid, extract('month', Investimento.data_aporte) == selected_month, extract('year', Investimento.data_aporte) == selected_year)
+        first_day = date(selected_year, selected_month, 1)
+        _, last_d = calendar.monthrange(selected_year, selected_month)
+        last_day = date(selected_year, selected_month, last_d)
+        
+        mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= first_day, Movimentacao.data_registro <= last_day)
+        contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= first_day, ContaPagar.data_vencimento <= last_day)
+        inv_query = Investimento.query.filter(Investimento.user_id==uid, Investimento.data_aporte >= first_day, Investimento.data_aporte <= last_day)
         despesas_cartao = DespesaCartao.query.filter_by(user_id=uid, mes_fatura=selected_month, ano_fatura=selected_year).all()
     else:
-        mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, extract('year', Movimentacao.data_registro) == selected_year)
-        contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, extract('year', ContaPagar.data_vencimento) == selected_year)
-        inv_query = Investimento.query.filter(Investimento.user_id==uid, extract('year', Investimento.data_aporte) == selected_year)
+        first_day = date(selected_year, 1, 1)
+        last_day = date(selected_year, 12, 31)
+        
+        mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= first_day, Movimentacao.data_registro <= last_day)
+        contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= first_day, ContaPagar.data_vencimento <= last_day)
+        inv_query = Investimento.query.filter(Investimento.user_id==uid, Investimento.data_aporte >= first_day, Investimento.data_aporte <= last_day)
         despesas_cartao = DespesaCartao.query.filter_by(user_id=uid, ano_fatura=selected_year).all()
 
     movimentacoes = mov_query.order_by(Movimentacao.data_registro.desc()).all()
@@ -345,8 +354,12 @@ def dashboard():
     anual_despesas = [0.0] * 12
     if view_mode == "anual":
         for m in range(1, 13):
-            m_mov = Movimentacao.query.filter(Movimentacao.user_id==uid, extract('month', Movimentacao.data_registro) == m, extract('year', Movimentacao.data_registro) == selected_year).all()
-            m_ct = ContaPagar.query.filter(ContaPagar.user_id==uid, extract('month', ContaPagar.data_vencimento) == m, extract('year', ContaPagar.data_vencimento) == selected_year).all()
+            fd = date(selected_year, m, 1)
+            _, ld_d = calendar.monthrange(selected_year, m)
+            ld = date(selected_year, m, ld_d)
+            
+            m_mov = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= fd, Movimentacao.data_registro <= ld).all()
+            m_ct = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= fd, ContaPagar.data_vencimento <= ld).all()
             m_dc = DespesaCartao.query.filter_by(user_id=uid, mes_fatura=m, ano_fatura=selected_year).all()
             anual_receitas[m-1] = float(sum([to_decimal(x.valor) for x in m_mov]))
             anual_despesas[m-1] = float(sum([to_decimal(x.valor) for x in m_ct]) + sum([to_decimal(x.valor) for x in m_dc]))
@@ -394,16 +407,28 @@ def perfil():
         return redirect(url_for("perfil"))
     return render_template("perfil.html", user=user)
 
+# ROTA DE PDF ATUALIZADA PARA ACEITAR MÊS = 0 (ANO TODO)
 @app.route("/relatorio_pdf/<int:mes>/<int:ano>")
 @normal_user_required
 def relatorio_pdf(mes, ano):
     uid = session["user_id"]
-    mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, extract('month', Movimentacao.data_registro) == mes, extract('year', Movimentacao.data_registro) == ano).order_by(Movimentacao.data_registro.desc()).all()
-    contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, extract('month', ContaPagar.data_vencimento) == mes, extract('year', ContaPagar.data_vencimento) == ano).order_by(ContaPagar.data_vencimento.asc()).all()
+    if mes == 0:
+        fd = date(ano, 1, 1)
+        ld = date(ano, 12, 31)
+        mes_texto = f"Ano Completo ({ano})"
+    else:
+        fd = date(ano, mes, 1)
+        _, last_d = calendar.monthrange(ano, mes)
+        ld = date(ano, mes, last_d)
+        mes_texto = f"{mes:02d}/{ano}"
+        
+    mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= fd, Movimentacao.data_registro <= ld).order_by(Movimentacao.data_registro.desc()).all()
+    contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= fd, ContaPagar.data_vencimento <= ld).order_by(ContaPagar.data_vencimento.asc()).all()
     total_receitas = sum([to_decimal(m.valor) for m in mov_query])
     total_despesas = sum([to_decimal(c.valor) for c in contas_query])
     saldo = total_receitas - total_despesas
-    return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes=mes, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=saldo)
+    
+    return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes_texto=mes_texto, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=saldo)
 
 @app.route("/configuracoes", methods=["GET"])
 @admin_required
@@ -480,7 +505,6 @@ def delete_orcamento(id):
 @normal_user_required
 def add_receita():
     descricao = request.form.get("descricao", "").strip()
-    # PREVENÇÃO DE ERRO SE A CATEGORIA VIER VAZIA
     categoria = request.form.get("categoria") or "Outros"
     
     valor, data_str = to_decimal(request.form.get("valor")), request.form.get("data")
@@ -634,7 +658,7 @@ def toggle_despesa_cartao(id):
 def delete_despesa_cartao(id):
     dc = DespesaCartao.query.filter_by(id=id, user_id=session["user_id"]).first_or_404()
     m, y = dc.mes_fatura, dc.ano_fatura
-    if request.form.get("deletar_tudo") == "sim" and dc.grupo_id: DespesaCartao.query.filter_by(user_id=session["user_id"], grupo_recorrencia_id=dc.grupo_id).delete()
+    if request.form.get("deletar_tudo") == "sim" and dc.grupo_id: DespesaCartao.query.filter_by(user_id=session["user_id"], grupo_recorrencia_id=dc.grupo_recorrencia_id).delete()
     else: db.session.delete(dc)
     db.session.commit()
     return redirect(url_for("dashboard", month=m, year=y, tab="tab-cartao"))
