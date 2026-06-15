@@ -34,7 +34,7 @@
         
         <div style="max-height: 200px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:8px;">
             {% for c in categorias_despesa %}
-            <span class="counter-pill" style="border-color:var(--coral); display:flex; align-items:center; gap: 6px;">
+            <span class="counter-pill" style="border-color:var(--coral); display:flex; align-items:center; gap: 6px; position:relative;">
                 {{ c.nome }}
                 <small style="opacity: 0.6;">
                     {% if 'essencial' in c.tipo or c.tipo == 'despesa' %}(Essencial)
@@ -42,9 +42,32 @@
                     {% elif 'futuro' in c.tipo %}(Futuro)
                     {% endif %}
                 </small>
+                
+                <button type="button" style="border:none; background:none; cursor:pointer; font-size:0.9rem; margin-left: 4px;" onclick="document.getElementById('dialog-edit-cat-{{c.id}}').showModal()" title="Editar">✏️</button>
+
                 <form method="post" action="{{ url_for('delete_categoria', id=c.id) }}" style="display:inline; margin: 0;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button style="border:none; background:none; color:var(--coral); cursor:pointer; font-weight: bold; padding: 0;">x</button>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" style="border:none; background:none; color:var(--coral); cursor:pointer; font-weight: bold; font-size: 1rem; padding: 0;" title="Excluir">×</button>
                 </form>
+
+                <dialog id="dialog-edit-cat-{{c.id}}" style="max-width: 90vw; width: 350px; text-align: left;">
+                    <h3>Editar Categoria</h3>
+                    <form method="post" action="{{ url_for('edit_categoria', id=c.id) }}" class="stack-form" style="margin-top: 15px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <label>Nome da Categoria <input type="text" name="nome" value="{{ c.nome }}" required></label>
+                        <label>Macro-Grupo
+                            <select name="macro_grupo">
+                                <option value="essencial" {% if 'essencial' in c.tipo or c.tipo == 'despesa' %}selected{% endif %}>Gasto Essencial</option>
+                                <option value="lazer" {% if 'lazer' in c.tipo %}selected{% endif %}>Lazer e Supérfluos</option>
+                                <option value="futuro" {% if 'futuro' in c.tipo %}selected{% endif %}>Futuro / Dívidas</option>
+                            </select>
+                        </label>
+                        <div style="display:flex; gap:10px; margin-top:12px;">
+                            <button type="submit" class="primary-button">Salvar Alterações</button>
+                            <button type="button" class="ghost-button" onclick="this.closest('dialog').close()">Cancelar</button>
+                        </div>
+                    </form>
+                </dialog>
             </span>
             {% endfor %}
         </div>
@@ -61,11 +84,27 @@
         
         <div style="max-height: 200px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:8px;">
             {% for c in categorias_receita %}
-            <span class="counter-pill" style="border-color:var(--green); display:flex; align-items:center; gap: 6px;">
+            <span class="counter-pill" style="border-color:var(--green); display:flex; align-items:center; gap: 6px; position:relative;">
                 {{ c.nome }} 
+                
+                <button type="button" style="border:none; background:none; cursor:pointer; font-size:0.9rem; margin-left: 4px;" onclick="document.getElementById('dialog-edit-cat-{{c.id}}').showModal()" title="Editar">✏️</button>
+
                 <form method="post" action="{{ url_for('delete_categoria', id=c.id) }}" style="display:inline; margin: 0;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button style="border:none; background:none; color:var(--green); cursor:pointer; font-weight: bold; padding: 0;">x</button>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" style="border:none; background:none; color:var(--green); cursor:pointer; font-weight: bold; font-size: 1rem; padding: 0;" title="Excluir">×</button>
                 </form>
+
+                <dialog id="dialog-edit-cat-{{c.id}}" style="max-width: 90vw; width: 350px; text-align: left;">
+                    <h3>Editar Origem de Receita</h3>
+                    <form method="post" action="{{ url_for('edit_categoria', id=c.id) }}" class="stack-form" style="margin-top: 15px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <label>Nome da Origem <input type="text" name="nome" value="{{ c.nome }}" required></label>
+                        <div style="display:flex; gap:10px; margin-top:12px;">
+                            <button type="submit" class="primary-button">Salvar Alterações</button>
+                            <button type="button" class="ghost-button" onclick="this.closest('dialog').close()">Cancelar</button>
+                        </div>
+                    </form>
+                </dialog>
             </span>
             {% endfor %}
         </div>

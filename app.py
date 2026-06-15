@@ -73,7 +73,7 @@ class User(db.Model):
 class Categoria(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(50), nullable=False)
-    tipo = db.Column(db.String(50), nullable=False) # Agora suporta 'despesa_essencial', etc.
+    tipo = db.Column(db.String(50), nullable=False)
 
 class OrcamentoMensal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -252,7 +252,6 @@ def dashboard():
     selected_year = int(request.args.get("year", hoje.year))
     current_tab = request.args.get("tab", "tab-visao")
 
-    # Filtra despesas de forma inteligente (qualquer coisa que comece com 'despesa')
     categorias_despesa = Categoria.query.filter(Categoria.tipo.like('despesa%')).order_by(Categoria.nome.asc()).all()
     categorias_receita = Categoria.query.filter_by(tipo='receita').order_by(Categoria.nome.asc()).all()
     cartoes = CartaoCredito.query.filter_by(user_id=uid).all()
@@ -375,14 +374,11 @@ def dashboard():
         current_tab=current_tab, anual_receitas=anual_receitas, anual_despesas=anual_despesas, metas=metas_db
     )
 
-# --- NOVA ROTA: APLICAÇÃO DO ORÇAMENTO AUTOMÁTICO ---
 @app.route("/orcamento/auto", methods=["POST"])
 @normal_user_required
 def auto_orcamento():
-    try:
-        renda = Decimal(request.form.get("renda_base_hidden", "0"))
-    except:
-        renda = ZERO
+    try: renda = Decimal(request.form.get("renda_base_hidden", "0"))
+    except: renda = ZERO
 
     perfil = request.form.get("perfil_orcamento_hidden")
     if renda <= ZERO:
@@ -395,7 +391,6 @@ def auto_orcamento():
 
     teto_ess, teto_laz, teto_fut = renda * p_ess, renda * p_laz, renda * p_fut
 
-    # Divide o teto pelas categorias ativas de cada grupo
     cats = Categoria.query.filter(Categoria.tipo.like('despesa%')).all()
     cat_ess = [c for c in cats if 'essencial' in c.tipo or c.tipo == 'despesa']
     cat_laz = [c for c in cats if 'lazer' in c.tipo]
@@ -506,7 +501,6 @@ def add_categoria():
     nome = request.form.get("nome", "").strip()
     tipo_base = request.form.get("tipo", "despesa")
     
-    # SE FOR DESPESA, SALVA O MACRO GRUPO JUNTO
     if tipo_base == "despesa":
         macro = request.form.get("macro_grupo", "essencial")
         tipo_final = f"despesa_{macro}"
@@ -516,6 +510,31 @@ def add_categoria():
     if nome and not Categoria.query.filter_by(nome=nome, tipo=tipo_final).first():
         db.session.add(Categoria(nome=nome, tipo=tipo_final))
         db.session.commit()
+    return redirect(url_for("configuracoes"))
+
+# --- A MÁGICA DA EDIÇÃO EM CASCATA ---
+@app.route("/categoria/<int:id>/edit", methods=["POST"])
+@admin_required
+def edit_categoria(id):
+    cat = Categoria.query.get_or_404(id)
+    old_nome = cat.nome
+    novo_nome = request.form.get("nome", "").strip()
+    
+    if "despesa" in cat.tipo:
+        macro = request.form.get("macro_grupo", "essencial")
+        cat.tipo = f"despesa_{macro}"
+
+    if novo_nome and novo_nome != old_nome:
+        if not Categoria.query.filter(Categoria.nome == novo_nome, Categoria.tipo == cat.tipo, Categoria.id != id).first():
+            cat.nome = novo_nome
+            # Atualização invisível para não corromper os dados já lançados!
+            ContaPagar.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
+            Movimentacao.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
+            DespesaCartao.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
+            OrcamentoMensal.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
+
+    db.session.commit()
+    flash("Categoria atualizada com sucesso!", "success")
     return redirect(url_for("configuracoes"))
 
 @app.route("/categoria/<int:id>/delete", methods=["POST"])
