@@ -45,7 +45,7 @@
                 
                 <button type="button" style="border:none; background:none; cursor:pointer; font-size:0.9rem; margin-left: 4px;" onclick="document.getElementById('dialog-edit-cat-{{c.id}}').showModal()" title="Editar">✏️</button>
 
-                <form method="post" action="{{ url_for('delete_categoria', id=c.id) }}" style="display:inline; margin: 0;">
+                <form method="post" action="{{ url_for('delete_categoria', id=c.id) }}" style="display:inline; margin: 0;" onsubmit="return confirm('ATENÇÃO: Apagar esta categoria deixará as contas antigas órfãs. É mais seguro EDITAR o nome. Deseja mesmo excluir?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" style="border:none; background:none; color:var(--coral); cursor:pointer; font-weight: bold; font-size: 1rem; padding: 0;" title="Excluir">×</button>
                 </form>
@@ -89,7 +89,7 @@
                 
                 <button type="button" style="border:none; background:none; cursor:pointer; font-size:0.9rem; margin-left: 4px;" onclick="document.getElementById('dialog-edit-cat-{{c.id}}').showModal()" title="Editar">✏️</button>
 
-                <form method="post" action="{{ url_for('delete_categoria', id=c.id) }}" style="display:inline; margin: 0;">
+                <form method="post" action="{{ url_for('delete_categoria', id=c.id) }}" style="display:inline; margin: 0;" onsubmit="return confirm('Apagar esta origem de receita? Recomendamos apenas editar o nome.');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" style="border:none; background:none; color:var(--green); cursor:pointer; font-weight: bold; font-size: 1rem; padding: 0;" title="Excluir">×</button>
                 </form>
@@ -130,7 +130,7 @@
                         <td>{% if u.is_admin %}Administrador{% else %}Comum{% endif %}</td>
                         <td>
                             {% if u.id != session.user_id %}
-                            <form method="post" action="{{ url_for('delete_user', id=u.id) }}" style="display:inline;">
+                            <form method="post" action="{{ url_for('delete_user', id=u.id) }}" style="display:inline;" onsubmit="return confirm('ALERTA MÁXIMO: Isso apagará TODOS os dados, contas, cartões e investimentos deste usuário para sempre. Deseja mesmo continuar?');">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="ghost-button danger-button">Excluir Conta</button>
                             </form>
                             {% else %}Conta Atual{% endif %}

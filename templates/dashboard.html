@@ -116,7 +116,7 @@
                 <div style="width: 100%; height: 10px; background: rgba(0,0,0,0.08); border-radius: 5px; overflow: hidden;">
                     <div style="width: {{ pct_clamped }}%; height: 100%; background: {{ color }}; transition: width 0.3s ease;"></div>
                 </div>
-                <form method="post" action="{{ url_for('delete_orcamento', id=orc.id) }}" style="text-align: right; margin-top: 4px;">
+                <form method="post" action="{{ url_for('delete_orcamento', id=orc.id) }}" style="text-align: right; margin-top: 4px;" onsubmit="return confirm('Tem certeza que deseja remover este limite do painel?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" style="background: none; border: none; color: var(--muted); font-size: 0.7rem; cursor: pointer;">Remover Limite</button>
                 </form>
             </div>
@@ -170,7 +170,7 @@
                             <td>
                                 <div style="display: flex; gap: 4px;">
                                     <button type="button" class="ghost-button" onclick="document.getElementById('dialog-edit-rec-{{m.id}}').showModal()">✏️</button>
-                                    <form method="post" action="{{ url_for('delete_receita', id=m.id) }}">
+                                    <form method="post" action="{{ url_for('delete_receita', id=m.id) }}" onsubmit="return confirm('Tem certeza que deseja apagar permanentemente esta receita?');">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="ghost-button danger-button">X</button>
                                     </form>
                                 </div>
@@ -266,8 +266,9 @@
                             {% if not item.is_fatura %}
                             <div style="display: flex; gap: 4px;">
                                 <button type="button" class="ghost-button" onclick="document.getElementById('dialog-edit-cta-{{item.id}}').showModal()">✏️</button>
-                                <form method="post" action="{{ url_for('delete_conta', conta_id=item.id) }}">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="ghost-button danger-button">X</button>
+                                <form method="post" action="{{ url_for('delete_conta', conta_id=item.id) }}" onsubmit="return confirm('Apagar esta conta? ATENÇÃO: Se for parcelada, escolha se quer apagar todas marcando a caixa.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="ghost-button danger-button">X</button>
                                     {% if item.total_parcelas > 1 %}<label style="font-size: 0.7rem; display: block;"><input type="checkbox" name="deletar_tudo" value="sim"> Apagar Todas</label>{% endif %}
                                 </form>
                             </div>
@@ -359,7 +360,7 @@
                         <td>
                             <div style="display:flex; gap:4px;">
                                 <button type="button" class="ghost-button" onclick="document.getElementById('dialog-edit-dc-{{dc.id}}').showModal()">✏️</button>
-                                <form method="post" action="{{ url_for('delete_despesa_cartao', id=dc.id) }}">
+                                <form method="post" action="{{ url_for('delete_despesa_cartao', id=dc.id) }}" onsubmit="return confirm('Tem certeza que deseja apagar esta compra da sua fatura?');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="ghost-button danger-button">X</button>
                                 </form>
                             </div>
@@ -404,7 +405,7 @@
                     <div class="progress-bar-fill" style="width: {{ pct_clamped }}%; height: 100%; background: linear-gradient(90deg, var(--gold), var(--green));"></div>
                 </div>
                 <div style="display:flex; gap:6px; margin-top:8px;">
-                    <form method="post" action="{{ url_for('delete_meta', id=item.id) }}">
+                    <form method="post" action="{{ url_for('delete_meta', id=item.id) }}" onsubmit="return confirm('Excluir esta meta? Os investimentos vinculados a ela NÃO serão apagados, apenas desvinculados.');">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="ghost-button danger-button" style="font-size:0.75rem; padding:4px 8px;">Remover</button>
                     </form>
                 </div>
@@ -475,7 +476,7 @@
                             <strong class="{% if lucro > 0 %}text-profit{% elif lucro < 0 %}text-cost{% endif %}">{{ lucro|brl }}</strong>
                         </td>
                         <td>
-                            <form method="post" action="{{ url_for('resgatar_investimento', id=i.id) }}">
+                            <form method="post" action="{{ url_for('resgatar_investimento', id=i.id) }}" onsubmit="return confirm('Deseja resgatar este investimento? O valor será enviado para o saldo da sua conta como Receita.');">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="ghost-button" style="color: var(--green); border-color: var(--green);">Resgatar</button>
                             </form>
                         </td>
@@ -505,7 +506,6 @@ function toggleMetrics() {
     else { icon.innerText = '▼'; text.innerText = '👁️ Ver Resumo Financeiro'; }
 }
 
-// CORREÇÃO: Transforma a máscara de moeda Brasileira em um número que o JavaScript possa calcular
 function getFloatFromMask(id) {
     let val = document.getElementById(id).value;
     if(!val) return 0;
@@ -556,9 +556,7 @@ function calcularAposentadoria() {
     
     if(!renda || renda <= 0 || !anos || anos <= 0) { res.style.display = 'block'; res.innerHTML = '<span style="color:red;">Preencha os dois campos corretamente.</span>'; return; }
     
-    // Regra dos 4% ao ano.
     const patrimonio_necessario = renda * 300;
-    // Juros REAIS de 0.48% ao mês (Já descontando a desvalorização da moeda / inflação)
     const taxa_mes = 0.00486; 
     const meses = anos * 12;
     const aporte_mensal = patrimonio_necessario * (taxa_mes / (Math.pow(1 + taxa_mes, meses) - 1));
