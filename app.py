@@ -73,7 +73,7 @@ class User(db.Model):
 class Categoria(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(50), nullable=False)
-    tipo = db.Column(db.String(20), nullable=False) 
+    tipo = db.Column(db.String(50), nullable=False) # Agora suporta 'despesa_essencial', etc.
 
 class OrcamentoMensal(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -169,8 +169,7 @@ class FaturaVirtual:
 def to_decimal(value: object) -> Decimal:
     if value in (None, ""): return ZERO
     val_str = str(value).replace("R$", "").replace(" ", "")
-    if "," in val_str:
-        val_str = val_str.replace(".", "").replace(",", ".")
+    if "," in val_str: val_str = val_str.replace(".", "").replace(",", ".")
     return Decimal(val_str).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 @app.template_filter("brl")
@@ -253,11 +252,11 @@ def dashboard():
     selected_year = int(request.args.get("year", hoje.year))
     current_tab = request.args.get("tab", "tab-visao")
 
-    categorias_despesa = Categoria.query.filter_by(tipo='despesa').order_by(Categoria.nome.asc()).all()
+    # Filtra despesas de forma inteligente (qualquer coisa que comece com 'despesa')
+    categorias_despesa = Categoria.query.filter(Categoria.tipo.like('despesa%')).order_by(Categoria.nome.asc()).all()
     categorias_receita = Categoria.query.filter_by(tipo='receita').order_by(Categoria.nome.asc()).all()
     cartoes = CartaoCredito.query.filter_by(user_id=uid).all()
 
-    # BUSCA BLINDADA POR INTERVALO DE DATAS (Resolve o erro 500 no Vercel)
     if view_mode == "mensal":
         first_day = date(selected_year, selected_month, 1)
         _, last_d = calendar.monthrange(selected_year, selected_month)
@@ -303,16 +302,16 @@ def dashboard():
     if vencidas > 0: alertas.append(f"🚨 Atenção: Você tem {vencidas} conta(s) em atraso!")
     if vencendo_hoje > 0: alertas.append(f"⚠️ Lembrete: Você tem {vencendo_hoje} conta(s) a vencer hoje!")
 
+    todas_despesas_pendentes = DespesaCartao.query.filter_by(user_id=uid, pago=False).all()
     cartoes_info = []
     for c in cartoes:
-        despesas_pendentes = DespesaCartao.query.filter_by(cartao_id=c.id, pago=False).all()
-        uso = sum([to_decimal(d.valor) for d in despesas_pendentes])
+        uso = sum([to_decimal(d.valor) for d in todas_despesas_pendentes if d.cartao_id == c.id])
         pct = (uso / c.limite * 100) if c.limite > 0 else 0
         cartoes_info.append({ 'nome': c.nome, 'limite': c.limite, 'uso': uso, 'pct': float(pct.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)) })
 
     metas_progresso = []
     for meta in metas_db:
-        aportes_ativos_meta = [i for i in meta.aportes if not i.resgatado]
+        aportes_ativos_meta = [i for i in carteira_ativa if i.meta_id == meta.id]
         total_acumulado = sum([to_decimal(i.valor_atual) for i in aportes_ativos_meta])
         pct = (total_acumulado / meta.valor_alvo * Decimal("100")) if meta.valor_alvo > ZERO else ZERO
         valor_restante = meta.valor_alvo - total_acumulado
@@ -334,14 +333,11 @@ def dashboard():
     gastos_por_categoria = {}
     for c in contas: gastos_por_categoria[c.categoria] = gastos_por_categoria.get(c.categoria, ZERO) + to_decimal(c.valor)
     for dc in despesas_cartao: gastos_por_categoria[dc.categoria] = gastos_por_categoria.get(dc.categoria, ZERO) + to_decimal(dc.valor)
-    
     chart_labels = list(gastos_por_categoria.keys())
     chart_data = [float(val) for val in gastos_por_categoria.values()]
 
     receitas_por_categoria = {}
-    for m in movimentacoes:
-        receitas_por_categoria[m.categoria] = receitas_por_categoria.get(m.categoria, ZERO) + to_decimal(m.valor)
-    
+    for m in movimentacoes: receitas_por_categoria[m.categoria] = receitas_por_categoria.get(m.categoria, ZERO) + to_decimal(m.valor)
     chart_labels_receitas = list(receitas_por_categoria.keys())
     chart_data_receitas = [float(val) for val in receitas_por_categoria.values()]
 
@@ -355,21 +351,15 @@ def dashboard():
             'gasto': gasto_cat, 'pct': float(pct.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
         })
 
-    # OTIMIZAÇÃO: PROCESSAMENTO ANUAL EM MEMÓRIA (Evita Crash no Vercel)
     anual_receitas = [0.0] * 12
     anual_despesas = [0.0] * 12
     if view_mode == "anual":
         for m_item in movimentacoes:
-            if m_item.data_registro:
-                anual_receitas[m_item.data_registro.month - 1] += float(to_decimal(m_item.valor))
-                
+            if m_item.data_registro: anual_receitas[m_item.data_registro.month - 1] += float(to_decimal(m_item.valor))
         for c_item in contas:
-            if c_item.data_vencimento:
-                anual_despesas[c_item.data_vencimento.month - 1] += float(to_decimal(c_item.valor))
-                
+            if c_item.data_vencimento: anual_despesas[c_item.data_vencimento.month - 1] += float(to_decimal(c_item.valor))
         for dc_item in despesas_cartao:
-            if dc_item.mes_fatura:
-                anual_despesas[dc_item.mes_fatura - 1] += float(to_decimal(dc_item.valor))
+            if dc_item.mes_fatura: anual_despesas[dc_item.mes_fatura - 1] += float(to_decimal(dc_item.valor))
 
     meses_nomes = {1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"}
 
@@ -385,16 +375,56 @@ def dashboard():
         current_tab=current_tab, anual_receitas=anual_receitas, anual_despesas=anual_despesas, metas=metas_db
     )
 
+# --- NOVA ROTA: APLICAÇÃO DO ORÇAMENTO AUTOMÁTICO ---
+@app.route("/orcamento/auto", methods=["POST"])
+@normal_user_required
+def auto_orcamento():
+    try:
+        renda = Decimal(request.form.get("renda_base_hidden", "0"))
+    except:
+        renda = ZERO
+
+    perfil = request.form.get("perfil_orcamento_hidden")
+    if renda <= ZERO:
+        flash("Informe uma renda válida para aplicar o Orçamento Automático.", "error")
+        return redirect(url_for("dashboard", tab="tab-visao"))
+
+    if perfil == 'aposentadoria': p_ess, p_laz, p_fut = Decimal('0.40'), Decimal('0.20'), Decimal('0.40')
+    elif perfil == 'dividas': p_ess, p_laz, p_fut = Decimal('0.60'), Decimal('0.10'), Decimal('0.30')
+    else: p_ess, p_laz, p_fut = Decimal('0.50'), Decimal('0.30'), Decimal('0.20')
+
+    teto_ess, teto_laz, teto_fut = renda * p_ess, renda * p_laz, renda * p_fut
+
+    # Divide o teto pelas categorias ativas de cada grupo
+    cats = Categoria.query.filter(Categoria.tipo.like('despesa%')).all()
+    cat_ess = [c for c in cats if 'essencial' in c.tipo or c.tipo == 'despesa']
+    cat_laz = [c for c in cats if 'lazer' in c.tipo]
+    cat_fut = [c for c in cats if 'futuro' in c.tipo]
+
+    def distribuir(lista_cats, valor_total):
+        if not lista_cats: return
+        v_cat = (valor_total / len(lista_cats)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        for c in lista_cats:
+            orc = OrcamentoMensal.query.filter_by(user_id=session["user_id"], categoria=c.nome).first()
+            if orc: orc.limite = v_cat
+            else: db.session.add(OrcamentoMensal(user_id=session["user_id"], categoria=c.nome, limite=v_cat))
+
+    distribuir(cat_ess, teto_ess)
+    distribuir(cat_laz, teto_laz)
+    distribuir(cat_fut, teto_fut)
+
+    db.session.commit()
+    flash("Orçamento Automático distribuído e salvo com sucesso!", "success")
+    return redirect(url_for("dashboard", tab="tab-visao"))
+
 @app.route("/meus_cartoes", methods=["GET"])
 @normal_user_required
 def meus_cartoes():
-    cartoes = CartaoCredito.query.filter_by(user_id=session["user_id"]).all()
-    return render_template("meus_cartoes.html", cartoes=cartoes)
+    return render_template("meus_cartoes.html", cartoes=CartaoCredito.query.filter_by(user_id=session["user_id"]).all())
 
 @app.route("/ajuda", methods=["GET"])
 @normal_user_required
-def ajuda():
-    return render_template("ajuda.html")
+def ajuda(): return render_template("ajuda.html")
 
 @app.route("/perfil", methods=["GET", "POST"])
 @normal_user_required
@@ -403,13 +433,10 @@ def perfil():
     if request.method == "POST":
         novo_nome = request.form.get("username").strip()
         nova_senha = request.form.get("senha")
-        
-        if novo_nome != user.username and User.query.filter_by(username=novo_nome).first():
-            flash("Este nome de usuário já está em uso.", "error")
+        if novo_nome != user.username and User.query.filter_by(username=novo_nome).first(): flash("Este nome de usuário já está em uso.", "error")
         else:
             user.username = novo_nome
-            if nova_senha:
-                user.password_hash = generate_password_hash(nova_senha)
+            if nova_senha: user.password_hash = generate_password_hash(nova_senha)
             db.session.commit()
             session["username"] = user.username
             flash("Perfil atualizado com sucesso!", "success")
@@ -421,27 +448,25 @@ def perfil():
 def relatorio_pdf(mes, ano):
     uid = session["user_id"]
     if mes == 0:
-        fd = date(ano, 1, 1)
-        ld = date(ano, 12, 31)
-        mes_texto = f"Ano Completo ({ano})"
+        fd, ld, mes_texto = date(ano, 1, 1), date(ano, 12, 31), f"Ano Completo ({ano})"
     else:
         fd = date(ano, mes, 1)
         _, last_d = calendar.monthrange(ano, mes)
-        ld = date(ano, mes, last_d)
-        mes_texto = f"{mes:02d}/{ano}"
+        ld, mes_texto = date(ano, mes, last_d), f"{mes:02d}/{ano}"
         
     mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= fd, Movimentacao.data_registro <= ld).order_by(Movimentacao.data_registro.desc()).all()
     contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= fd, ContaPagar.data_vencimento <= ld).order_by(ContaPagar.data_vencimento.asc()).all()
     total_receitas = sum([to_decimal(m.valor) for m in mov_query])
     total_despesas = sum([to_decimal(c.valor) for c in contas_query])
-    saldo = total_receitas - total_despesas
     
-    return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes_texto=mes_texto, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=saldo)
+    return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes_texto=mes_texto, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=(total_receitas - total_despesas))
 
 @app.route("/configuracoes", methods=["GET"])
 @admin_required
 def configuracoes():
-    return render_template("config.html", categorias_despesa=Categoria.query.filter_by(tipo='despesa').order_by(Categoria.nome.asc()).all(), categorias_receita=Categoria.query.filter_by(tipo='receita').order_by(Categoria.nome.asc()).all(), usuarios=User.query.all())
+    categorias_despesa = Categoria.query.filter(Categoria.tipo.like('despesa%')).order_by(Categoria.nome.asc()).all()
+    categorias_receita = Categoria.query.filter_by(tipo='receita').order_by(Categoria.nome.asc()).all()
+    return render_template("config.html", categorias_despesa=categorias_despesa, categorias_receita=categorias_receita, usuarios=User.query.all())
 
 @app.route("/admin/user/add", methods=["POST"])
 @admin_required
@@ -478,9 +503,18 @@ def delete_user(id):
 @app.route("/categoria/add", methods=["POST"])
 @admin_required
 def add_categoria():
-    nome, tipo = request.form.get("nome", "").strip(), request.form.get("tipo", "despesa")
-    if nome and not Categoria.query.filter_by(nome=nome, tipo=tipo).first():
-        db.session.add(Categoria(nome=nome, tipo=tipo))
+    nome = request.form.get("nome", "").strip()
+    tipo_base = request.form.get("tipo", "despesa")
+    
+    # SE FOR DESPESA, SALVA O MACRO GRUPO JUNTO
+    if tipo_base == "despesa":
+        macro = request.form.get("macro_grupo", "essencial")
+        tipo_final = f"despesa_{macro}"
+    else:
+        tipo_final = "receita"
+
+    if nome and not Categoria.query.filter_by(nome=nome, tipo=tipo_final).first():
+        db.session.add(Categoria(nome=nome, tipo=tipo_final))
         db.session.commit()
     return redirect(url_for("configuracoes"))
 
@@ -629,8 +663,7 @@ def add_despesa_cartao():
     if resp: descricao = f"{descricao} [Resp: {resp}]"
     
     valor_t, d_str = to_decimal(request.form.get("valor")), request.form.get("data_compra")
-    cat = request.form.get("categoria") or "Outros"
-    t_parc = int(request.form.get("total_parcelas", 1))
+    cat, t_parc = request.form.get("categoria") or "Outros", int(request.form.get("total_parcelas", 1))
 
     cartao = CartaoCredito.query.filter_by(id=cid, user_id=session["user_id"]).first_or_404()
     d_compra = datetime.strptime(d_str, "%Y-%m-%d").date() if d_str else get_today_br()
@@ -757,7 +790,7 @@ with app.app_context():
         db.session.add(User(username=os.environ.get("ADMIN_USERNAME", "admin"), password_hash=generate_password_hash(os.environ.get("ADMIN_PASSWORD", "senha_segura_123")), is_admin=True))
         db.session.commit()
     if Categoria.query.count() == 0:
-        for n, t in [('Moradia', 'despesa'), ('Transporte', 'despesa'), ('Lazer', 'despesa'), ('Terceiros', 'despesa'), ('Outros', 'despesa'), ('Salário', 'receita'), ('Renda Extra', 'receita'), ('Investimentos', 'receita')]: db.session.add(Categoria(nome=n, tipo=t))
+        for n, t in [('Moradia', 'despesa_essencial'), ('Transporte', 'despesa_essencial'), ('Lazer', 'despesa_lazer'), ('Dívida Terceiros', 'despesa_futuro'), ('Outros', 'despesa_essencial'), ('Salário', 'receita'), ('Renda Extra', 'receita'), ('Investimentos', 'receita')]: db.session.add(Categoria(nome=n, tipo=t))
         db.session.commit()
 
 if __name__ == "__main__":

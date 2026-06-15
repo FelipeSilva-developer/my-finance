@@ -66,17 +66,11 @@
     <article class="metric-card accent-green"><span class="metric-label">Receitas</span><strong class="metric-value text-profit">{{ total_receitas|brl }}</strong></article>
     <article class="metric-card accent-coral"><span class="metric-label">Pagamentos</span><strong class="metric-value text-cost">{{ total_contas_pagas|brl }}</strong></article>
     <article class="metric-card"><span class="metric-label">Pendentes</span><strong class="metric-value" style="color: var(--gold);">{{ total_contas_pendentes|brl }}</strong></article>
-    <article class="metric-card accent-gold"><span class="metric-label">Aportes</span><strong class="metric-value" style="color: var(--gold);">{{ total_investido|brl }}</strong></article>
+    <article class="metric-card accent-gold"><span class="metric-label">Investimentos</span><strong class="metric-value" style="color: var(--gold);">{{ total_investido|brl }}</strong></article>
     <article class="metric-card"><span class="metric-label">Saldo em Conta</span><strong class="metric-value {% if saldo_consolidado >= 0 %}text-profit{% else %}text-cost{% endif %}">{{ saldo_consolidado|brl }}</strong></article>
 </section>
 
 <div id="tab-visao" class="tab-content">
-    {% if view_mode == 'anual' %}
-    <section class="summary-grid" style="grid-template-columns: 1fr; margin-top: 22px;">
-        <article class="panel"><div class="panel-heading"><h2>Comparativo Anual</h2></div><div style="max-height: 320px;"><canvas id="comparativeChart"></canvas></div></article>
-    </section>
-    {% endif %}
-
     <section class="summary-grid">
         <article class="panel">
             <div class="panel-heading"><h2>Distribuição de Gastos</h2></div>
@@ -87,8 +81,8 @@
         <article class="panel">
             <div class="panel-heading"><h2>Planejador de Orçamento Inteligente</h2></div>
             <div class="stack-form" style="margin-bottom: 24px; padding: 15px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px solid var(--line);">
-                <label>Sua Renda Principal (R$) <input type="number" id="renda_base" placeholder="Ex: 5000" style="background: white;"></label>
-                <label>Estratégia
+                <label>Sua Renda Principal (R$) <input type="text" id="renda_base" class="currency-mask" placeholder="Ex: 5.000,00" style="background: white;"></label>
+                <label>Estratégia Automática
                     <select id="perfil_orcamento" style="background: white;">
                         <option value="50_30_20">Equilíbrio (50% Essenciais, 30% Lazer, 20% Futuro)</option>
                         <option value="aposentadoria">Foco Aposentadoria (40% Essenc, 20% Lazer, 40% Futuro)</option>
@@ -98,12 +92,18 @@
                 <button type="button" class="primary-button" onclick="calcularOrcamentoInteligente()" style="margin-top: 5px;">Simular Metas Ideais</button>
                 <div id="resultado_orcamento" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem; line-height: 1.6; display: none;"></div>
             </div>
+            
+            <form id="auto_orcamento_form" method="post" action="{{ url_for('auto_orcamento') }}" style="display: none;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="renda_base_hidden" id="renda_base_hidden">
+                <input type="hidden" name="perfil_orcamento_hidden" id="perfil_orcamento_hidden">
+            </form>
 
-            <div class="panel-heading"><h2>Seus Limites Manuais (Regras)</h2></div>
+            <div class="panel-heading"><h2>Seus Limites Atuais</h2></div>
             <form method="post" action="{{ url_for('add_orcamento') }}" class="stack-form" style="display:flex; gap:10px; align-items:end; margin-bottom: 20px;">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <label style="flex: 1;">Categoria <select name="categoria" required>{% for c in categorias_despesa %}<option value="{{c.nome}}">{{c.nome}}</option>{% endfor %}</select></label>
-                <label style="flex: 1;">Limite (R$) <input type="text" name="limite" class="currency-mask" required></label>
+                <label style="flex: 1;">Ajustar Manualmente <select name="categoria" required>{% for c in categorias_despesa %}<option value="{{c.nome}}">{{c.nome}}</option>{% endfor %}</select></label>
+                <label style="flex: 1;">Novo Limite (R$) <input type="text" name="limite" class="currency-mask" required></label>
                 <button type="submit" class="ghost-button" style="height: 46px;">Fixar</button>
             </form>
             {% for orc in orcamentos_progresso %}
@@ -117,14 +117,14 @@
                     <div style="width: {{ pct_clamped }}%; height: 100%; background: {{ color }}; transition: width 0.3s ease;"></div>
                 </div>
                 <form method="post" action="{{ url_for('delete_orcamento', id=orc.id) }}" style="text-align: right; margin-top: 4px;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" style="background: none; border: none; color: var(--muted); font-size: 0.7rem; cursor: pointer;">Remover</button>
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" style="background: none; border: none; color: var(--muted); font-size: 0.7rem; cursor: pointer;">Remover Limite</button>
                 </form>
             </div>
-            {% else %}<p style="color: var(--muted); text-align: center;">Não existem orçamentos manuais definidos.</p>{% endfor %}
+            {% else %}<p style="color: var(--muted); text-align: center;">Não existem orçamentos definidos.</p>{% endfor %}
         </article>
         {% else %}
         <article class="panel">
-            <div class="panel-heading"><h2>Distribuição de Receitas</h2></div>
+            <div class="panel-heading"><h2>Distribuição de Receitas (Anual)</h2></div>
             <div style="max-height: 280px; display: flex; justify-content: center;"><canvas id="receitaChart"></canvas></div>
         </article>
         {% endif %}
@@ -416,7 +416,7 @@
             <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid var(--line);">
                 <div class="panel-heading"><h2>Simulador de Aposentadoria 🧮</h2></div>
                 <div class="stack-form" style="padding: 15px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px solid var(--line);">
-                    <label>Quanto quer receber por mês? (R$) <input type="number" id="sim_renda_mensal" placeholder="Ex: 5000" style="background: white;"></label>
+                    <label>Quanto quer receber por mês? (R$) <input type="text" id="sim_renda_mensal" class="currency-mask" placeholder="Ex: 5.000,00" style="background: white;"></label>
                     <label>Daqui a quantos anos? <input type="number" id="sim_anos" placeholder="Ex: 20" style="background: white;"></label>
                     <button type="button" class="primary-button" onclick="calcularAposentadoria()">Calcular Patrimônio Necessário</button>
                     <div id="resultado_aposentadoria" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem; line-height: 1.6; display: none;"></div>
@@ -426,13 +426,13 @@
 
         <div>
             <article class="panel" style="margin-bottom: 18px;">
-                <div class="panel-heading"><h2>Registrar Aporte</h2></div>
+                <div class="panel-heading"><h2>Registrar Novo Investimento</h2></div>
                 <form method="post" action="{{ url_for('add_investimento') }}" class="stack-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <label>Ativo <input type="text" name="ativo" required></label>
-                    <label>Valor (R$) <input type="text" name="valor_aporte" class="currency-mask" required></label>
+                    <label>Nome do Investimento <input type="text" name="ativo" placeholder="Ex: Tesouro Direto, CDB..." required></label>
+                    <label>Valor Investido (R$) <input type="text" name="valor_aporte" class="currency-mask" required></label>
                     <label>Vincular a uma Meta? <select name="meta_id"><option value="">-- Nenhuma --</option>{% for m in metas %}<option value="{{ m.id }}">{{ m.objetivo }}</option>{% endfor %}</select></label>
-                    <button type="submit" class="primary-button" style="background: linear-gradient(135deg, #1a5caf, #c88d1d);">Registrar Aporte</button>
+                    <button type="submit" class="primary-button" style="background: linear-gradient(135deg, #1a5caf, #c88d1d);">Registrar Investimento</button>
                 </form>
             </article>
 
@@ -457,7 +457,7 @@
         </div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Ativo</th><th>Aporte Inicial</th><th>Valor Atual</th><th>Lucro</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Nome</th><th>Valor Investido</th><th>Valor Atual</th><th>Lucro</th><th>Ações</th></tr></thead>
                 <tbody>
                     {% for i in carteira_ativa %}
                     <tr>
@@ -505,8 +505,16 @@ function toggleMetrics() {
     else { icon.innerText = '▼'; text.innerText = '👁️ Ver Resumo Financeiro'; }
 }
 
+// CORREÇÃO: Transforma a máscara de moeda Brasileira em um número que o JavaScript possa calcular
+function getFloatFromMask(id) {
+    let val = document.getElementById(id).value;
+    if(!val) return 0;
+    val = val.replace(/\./g, '').replace(',', '.');
+    return parseFloat(val);
+}
+
 function calcularOrcamentoInteligente() {
-    const renda = parseFloat(document.getElementById('renda_base').value);
+    const renda = getFloatFromMask('renda_base');
     const perfil = document.getElementById('perfil_orcamento').value;
     const res = document.getElementById('resultado_orcamento');
     
@@ -530,17 +538,27 @@ function calcularOrcamentoInteligente() {
             <span style="color: var(--coral);">📈 Futuro/Dívidas (${p_futuro*100}%):</span> <b>${format(renda*p_futuro)}</b> por mês.
         </div>
         <p style="font-size: 0.8rem; font-weight: normal; margin-top: 10px; color: var(--muted);">Dica: Utilize os valores acima como teto para cadastrar as suas "Regras de Limite" logo abaixo.</p>
+        
+        <button type="button" class="primary-button" onclick="aplicarOrcamento()" style="margin-top:15px; width:100%;">🚀 Aplicar e Salvar Limites Automaticamente</button>
     `;
 }
 
+function aplicarOrcamento() {
+    document.getElementById('renda_base_hidden').value = getFloatFromMask('renda_base');
+    document.getElementById('perfil_orcamento_hidden').value = document.getElementById('perfil_orcamento').value;
+    document.getElementById('auto_orcamento_form').submit();
+}
+
 function calcularAposentadoria() {
-    const renda = parseFloat(document.getElementById('sim_renda_mensal').value);
+    const renda = getFloatFromMask('sim_renda_mensal');
     const anos = parseFloat(document.getElementById('sim_anos').value);
     const res = document.getElementById('resultado_aposentadoria');
     
     if(!renda || renda <= 0 || !anos || anos <= 0) { res.style.display = 'block'; res.innerHTML = '<span style="color:red;">Preencha os dois campos corretamente.</span>'; return; }
     
+    // Regra dos 4% ao ano.
     const patrimonio_necessario = renda * 300;
+    // Juros REAIS de 0.48% ao mês (Já descontando a desvalorização da moeda / inflação)
     const taxa_mes = 0.00486; 
     const meses = anos * 12;
     const aporte_mensal = patrimonio_necessario * (taxa_mes / (Math.pow(1 + taxa_mes, meses) - 1));
@@ -548,9 +566,9 @@ function calcularAposentadoria() {
     const format = (val) => "R$ " + val.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     res.style.display = 'block';
     res.innerHTML = `
-        <p style="color: var(--green); margin-bottom: 8px;">🎯 Para receber <b>${format(renda)}</b>/mês sem trabalhar, você precisa juntar:</p>
+        <p style="color: var(--green); margin-bottom: 8px;">🎯 Para receber de forma segura <b>${format(renda)}</b>/mês pelo resto da vida (já contando com a desvalorização da moeda), você precisa juntar:</p>
         <h3 style="color: var(--text); margin-bottom: 12px; font-size: 1.5rem;">${format(patrimonio_necessario)}</h3>
-        <p>Com um prazo de <b>${anos} anos</b> (estimando juros compostos), você precisará investir no mínimo:</p>
+        <p>Com um prazo de <b>${anos} anos</b>, estimando juros reais a seu favor, precisará investir no mínimo:</p>
         <div style="padding: 10px; background: rgba(200, 141, 29, 0.1); border-radius: 8px; color: var(--gold); text-align: center;">
             Aporte Ideal: <b>${format(aporte_mensal)} por mês</b>
         </div>

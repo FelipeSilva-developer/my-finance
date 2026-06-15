@@ -21,13 +21,27 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <input type="hidden" name="tipo" value="despesa"/>
             <label>Nova Categoria <input type="text" name="nome" placeholder="Ex: Pet, Saúde..." required></label>
+            
+            <label>Macro-Grupo (Para o Orçamento Inteligente)
+                <select name="macro_grupo">
+                    <option value="essencial">Gasto Essencial (Moradia, Alimentação)</option>
+                    <option value="lazer">Lazer e Supérfluos</option>
+                    <option value="futuro">Futuro / Dívidas</option>
+                </select>
+            </label>
             <button type="submit" class="ghost-button">Adicionar</button>
         </form>
         
         <div style="max-height: 200px; overflow-y:auto; display:flex; flex-wrap:wrap; gap:8px;">
             {% for c in categorias_despesa %}
             <span class="counter-pill" style="border-color:var(--coral); display:flex; align-items:center; gap: 6px;">
-                {{ c.nome }} 
+                {{ c.nome }}
+                <small style="opacity: 0.6;">
+                    {% if 'essencial' in c.tipo or c.tipo == 'despesa' %}(Essencial)
+                    {% elif 'lazer' in c.tipo %}(Lazer)
+                    {% elif 'futuro' in c.tipo %}(Futuro)
+                    {% endif %}
+                </small>
                 <form method="post" action="{{ url_for('delete_categoria', id=c.id) }}" style="display:inline; margin: 0;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button style="border:none; background:none; color:var(--coral); cursor:pointer; font-weight: bold; padding: 0;">x</button>
                 </form>
