@@ -98,10 +98,10 @@
 
         <article class="panel">
             <div class="panel-heading"><h2>Planejador de Orçamento Inteligente</h2></div>
-            <div class="stack-form" style="margin-bottom: 24px; padding: 15px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px solid var(--line);">
-                <label>Sua Renda Principal (R$) <input type="text" id="renda_base" class="currency-mask" placeholder="Ex: 5.000,00" style="background: white;"></label>
+            <div class="stack-form" style="margin-bottom: 24px; padding: 15px; border-radius: 12px; border: 1px solid var(--line);">
+                <label>Sua Renda Principal (R$) <input type="text" id="renda_base" class="currency-mask" placeholder="Ex: 5.000,00"></label>
                 <label>Estratégia Automática
-                    <select id="perfil_orcamento" style="background: white;">
+                    <select id="perfil_orcamento">
                         <option value="50_30_20">Equilíbrio (50% Essenciais, 30% Lazer, 20% Futuro)</option>
                         <option value="aposentadoria">Foco Aposentadoria (40% Essenc, 20% Lazer, 40% Futuro)</option>
                         <option value="dividas">Eliminar Dívidas (60% Essenc, 10% Lazer, 30% Dívidas)</option>
@@ -429,9 +429,9 @@
             
             <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid var(--line);">
                 <div class="panel-heading"><h2>Simulador de Aposentadoria 🧮</h2></div>
-                <div class="stack-form" style="padding: 15px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px solid var(--line);">
-                    <label>Quanto quer receber por mês? (R$) <input type="text" id="sim_renda_mensal" class="currency-mask" placeholder="Ex: 5.000,00" style="background: white;"></label>
-                    <label>Daqui a quantos anos? <input type="number" id="sim_anos" placeholder="Ex: 20" style="background: white;"></label>
+                <div class="stack-form" style="padding: 15px; border-radius: 12px; border: 1px solid var(--line);">
+                    <label>Quanto quer receber por mês? (R$) <input type="text" id="sim_renda_mensal" class="currency-mask" placeholder="Ex: 5.000,00"></label>
+                    <label>Daqui a quantos anos? <input type="number" id="sim_anos" placeholder="Ex: 20"></label>
                     <button type="button" class="primary-button" onclick="calcularAposentadoria()">Calcular Patrimônio Necessário</button>
                     <div id="resultado_aposentadoria" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem; line-height: 1.6; display: none;"></div>
                 </div>
@@ -622,7 +622,7 @@ function toggleParc() {
     document.getElementById("campo_parc").style.display = (tipo === "parcelado") ? "grid" : "none";
 }
 
-// CORES DE GRAFICOS: Super Paleta com 35 cores distintas
+// CORES DE GRAFICOS: Super Paleta com 35 cores distintas para não haver repetidos
 const chartColors = [
     '#0f8a63', '#d45a3d', '#1a5caf', '#c88d1d', '#8e44ad', '#2c3e50', 
     '#16a085', '#e67e22', '#c0392b', '#2980b9', '#f39c12', '#27ae60', 
