@@ -3,38 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <title>Relatório Financeiro - {{ mes_texto }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@700&family=Manrope:wght@400;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; color: #333; margin: 40px; }
-        .cabecalho { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-        .resumo { display: flex; justify-content: space-between; background: #f0f0f0; padding: 20px; border-radius: 8px; font-weight: bold; font-size: 1.1em; flex-wrap: wrap; gap: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; margin-bottom: 40px; }
-        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
-        th { background-color: #f8f9fa; }
-        .valor { text-align: right; font-weight: bold; }
+        body { font-family: 'Manrope', Arial, sans-serif; color: #2f2415; margin: 40px; background-color: #fff; }
+        .cabecalho { text-align: center; border-bottom: 2px solid #eaeaea; padding-bottom: 20px; margin-bottom: 30px; display: flex; flex-direction: column; align-items: center; }
+        .cabecalho img { width: 50px; margin-bottom: 10px; }
+        .cabecalho h1 { font-family: 'Fraunces', Georgia, serif; margin: 0; color: #1a5caf; font-size: 2.2rem; }
+        .cabecalho p { margin: 5px 0 0 0; color: #7b6a4b; font-weight: bold; font-size: 1.1rem; }
+        
+        .resumo { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 15px; margin-bottom: 30px; }
+        .resumo-card { flex: 1; min-width: 150px; background: #f8f9fa; border: 1px solid #eaeaea; border-radius: 12px; padding: 15px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .resumo-card span { display: block; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; color: #7b6a4b; font-weight: bold; margin-bottom: 5px; }
+        .resumo-card strong { display: block; font-size: 1.3rem; font-weight: 800; }
+        
+        h3 { font-family: 'Fraunces', Georgia, serif; font-size: 1.4rem; color: #2f2415; border-left: 4px solid #1a5caf; padding-left: 10px; margin-top: 40px; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 30px; border-radius: 8px; overflow: hidden; }
+        th, td { border-bottom: 1px solid #eaeaea; padding: 12px 10px; text-align: left; }
+        th { background-color: #f8f9fa; color: #7b6a4b; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        tr:nth-child(even) { background-color: #fafbfc; }
+        
+        .valor { text-align: right; font-weight: 800; }
         .positivo { color: #0f8a63; }
         .negativo { color: #d45a3d; }
+        .neutro { color: #c88d1d; }
+        
         @media print {
-            body { margin: 0; }
-            .resumo { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #f0f0f0 !important; }
-            th { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: #f8f9fa !important; }
+            body { margin: 0; padding: 10mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .resumo-card { background: #f8f9fa !important; border: 1px solid #eaeaea !important; }
+            th { background-color: #f8f9fa !important; }
+            tr:nth-child(even) { background-color: #fafbfc !important; }
+            @page { margin: 0; }
         }
     </style>
 </head>
 <body onload="window.print()">
     
     <div class="cabecalho">
+        <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Logo">
         <h1>Relatório Consolidado</h1>
         <p>Referência: {{ mes_texto }}</p>
     </div>
 
     <div class="resumo">
-        <span>Receitas: <span class="positivo">+ {{ total_receitas | brl }}</span></span>
-        <span>Pagos: <span class="negativo">- {{ total_despesas_pagas | brl }}</span></span>
-        <span>Investido: <span style="color: #c88d1d;">- {{ total_investido | brl }}</span></span>
-        <span style="font-size: 0.9em; color: #777;">(Pendentes: {{ total_despesas_pendentes | brl }})</span>
-        <span style="width: 100%; border-top: 1px dashed #ccc; padding-top: 10px; margin-top: 5px;">
-            Saldo Consolidado: <span class="{% if saldo < 0 %}negativo{% else %}positivo{% endif %}">{{ saldo | brl }}</span>
-        </span>
+        <div class="resumo-card">
+            <span>Receitas</span>
+            <strong class="positivo">+ {{ total_receitas | brl }}</strong>
+        </div>
+        <div class="resumo-card">
+            <span>Pagos</span>
+            <strong class="negativo">- {{ total_despesas_pagas | brl }}</strong>
+        </div>
+        <div class="resumo-card">
+            <span>Investido</span>
+            <strong class="neutro">- {{ total_investido | brl }}</strong>
+        </div>
+        <div class="resumo-card" style="background: #eef2f6; border-color: #d1dfed;">
+            <span style="color: #1a5caf;">Saldo Consolidado</span>
+            <strong class="{% if saldo < 0 %}negativo{% else %}positivo{% endif %}">{{ saldo | brl }}</strong>
+        </div>
+    </div>
+    <div style="text-align: right; font-size: 0.85em; color: #999; margin-top: -20px; margin-bottom: 20px;">
+        *Valores Pendentes no período: {{ total_despesas_pendentes | brl }}
     </div>
 
     <h3>Entradas (Receitas)</h3>
@@ -48,11 +78,11 @@
             <td class="valor positivo">+ {{ r.valor | brl }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="4" style="text-align: center;">Nenhuma receita registrada neste período.</td></tr>
+        <tr><td colspan="4" style="text-align: center; color: #999;">Nenhuma receita registrada neste período.</td></tr>
         {% endfor %}
     </table>
 
-    <h3>Saídas (Contas a Pagar / Faturas de Cartão)</h3>
+    <h3>Saídas (Contas e Faturas)</h3>
     <table>
         <tr><th>Vencimento / Compra</th><th>Descrição</th><th>Categoria</th><th>Status</th><th class="valor">Valor</th></tr>
         {% for d in despesas %}
@@ -60,11 +90,11 @@
             <td>{{ d.data_vencimento.strftime('%d/%m/%Y') }}</td>
             <td>{{ d.descricao }}</td>
             <td>{{ d.categoria }}</td>
-            <td>{{ 'Pago' if d.pago else 'Pendente' }}</td>
+            <td style="font-weight: bold; color: {{ '#0f8a63' if d.pago else '#d45a3d' }};">{{ 'Pago' if d.pago else 'Pendente' }}</td>
             <td class="valor negativo">- {{ d.valor | brl }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="5" style="text-align: center;">Nenhuma despesa registrada neste período.</td></tr>
+        <tr><td colspan="5" style="text-align: center; color: #999;">Nenhuma despesa registrada neste período.</td></tr>
         {% endfor %}
     </table>
 
@@ -77,7 +107,7 @@
             <td>{{ i.data_aporte.strftime('%d/%m/%Y') }}</td>
             <td>{{ i.ativo }}</td>
             <td>{{ i.tipo }}</td>
-            <td class="valor" style="color: #c88d1d;">- {{ i.valor_aporte | brl }}</td>
+            <td class="valor neutro">- {{ i.valor_aporte | brl }}</td>
         </tr>
         {% endfor %}
     </table>

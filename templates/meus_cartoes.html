@@ -31,18 +31,18 @@
         <div class="table-wrap">
             <table>
                 <thead>
-                    <tr><th>Cartão</th><th>Limite</th><th>Datas</th><th>Ações</th></tr>
+                    <tr><th class="sortable" onclick="sortTable(this)">Cartão</th><th class="sortable" onclick="sortTable(this)">Limite</th><th>Datas</th><th>Ações</th></tr>
                 </thead>
                 <tbody>
                     {% for cartao in cartoes %}
                     <tr>
                         <td><strong>{{ cartao.nome }}</strong></td>
-                        <td>{{ cartao.limite | brl }}</td>
+                        <td class="hide-val">{{ cartao.limite | brl }}</td>
                         <td><small>Fecha: {{ cartao.dia_fechamento }}<br>Vence: {{ cartao.dia_vencimento }}</small></td>
                         <td>
                             <div style="display: flex; gap: 4px;">
                                 <button type="button" class="ghost-button" onclick="document.getElementById('dialog-edit-cartao-{{cartao.id}}').showModal()">✏️</button>
-                                <form method="post" action="{{ url_for('delete_cartao', id=cartao.id) }}" onsubmit="return confirm('Tem certeza que deseja apagar este cartão? Todas as despesas vinculadas a ele também serão excluídas do sistema!');">
+                                <form method="post" action="{{ url_for('delete_cartao', id=cartao.id) }}" onsubmit="return confirmAction(event, 'Tem certeza que deseja apagar este cartão? Todas as despesas vinculadas a ele também serão excluídas do sistema!');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="ghost-button danger-button">X</button>
                                 </form>

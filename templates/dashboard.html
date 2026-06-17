@@ -6,8 +6,8 @@
 <section class="hero-card">
     <div class="hero-header">
         <div>
-            <p class="eyebrow">Olá, {{ session.username }}!</p>
-            <h1>Meu Controle Financeiro</h1>
+            <p class="eyebrow"><span id="saudacao">Olá</span>, {{ session.username }}!</p>
+            <h1>Meu Controle Financeiro <button id="privacy-icon" onclick="togglePrivacy()" style="background:none; border:none; font-size:1.8rem; cursor:pointer; margin-left:8px; opacity:0.8; transition:transform 0.2s;" title="Ocultar Valores">👁️</button></h1>
         </div>
         
         <div class="hero-actions">
@@ -44,7 +44,7 @@
     <div class="tabs-nav">
         <button class="tab-btn" onclick="switchTab('tab-visao')">📊 Visão Geral</button>
         <button class="tab-btn" onclick="switchTab('tab-receitas')">📥 Receitas</button>
-        <button class="tab-btn" onclick="switchTab('tab-cronograma')">⏳ Contas</button>
+        <button class="tab-btn" onclick="switchTab('tab-cronograma')">⏳ Contas {% if alertas %}<span class="tab-badge"></span>{% endif %}</button>
         <button class="tab-btn" onclick="switchTab('tab-cartao')">💳 Cartões</button>
         <button class="tab-btn" onclick="switchTab('tab-patrimonio')">🎯 Metas</button>
     </div>
@@ -53,7 +53,10 @@
 {% if alertas %}
 <div style="margin-top: 15px;">
     {% for alerta in alertas %}
-    <div class="flash-alert" style="background: var(--coral); color: white; border: none; font-weight: bold; margin-bottom: 8px;">{{ alerta }}</div>
+    <div class="flash-alert" style="background: var(--coral); color: white; border: none; font-weight: bold; margin-bottom: 8px; position:relative;">
+        {{ alerta }}
+        <span onclick="this.parentElement.style.opacity='0'; setTimeout(()=>this.parentElement.style.display='none', 300);" style="position: absolute; right: 15px; top: 12px; cursor: pointer; font-size: 1.2rem;">&times;</span>
+    </div>
     {% endfor %}
 </div>
 {% endif %}
@@ -63,14 +66,14 @@
 </button>
 
 <section class="metric-grid" id="metricGrid" style="margin-top: 15px;">
-    <article class="metric-card accent-green"><span class="metric-label">Receitas</span><strong class="metric-value text-profit">{{ total_receitas|brl }}</strong></article>
-    <article class="metric-card accent-coral"><span class="metric-label">Pagamentos</span><strong class="metric-value text-cost">{{ total_contas_pagas|brl }}</strong></article>
-    <article class="metric-card"><span class="metric-label">Pendentes</span><strong class="metric-value" style="color: var(--gold);">{{ total_contas_pendentes|brl }}</strong></article>
-    <article class="metric-card accent-gold"><span class="metric-label">Investimentos</span><strong class="metric-value" style="color: var(--gold);">{{ total_investido|brl }}</strong></article>
-    <article class="metric-card"><span class="metric-label">Saldo em Conta</span><strong class="metric-value {% if saldo_consolidado >= 0 %}text-profit{% else %}text-cost{% endif %}">{{ saldo_consolidado|brl }}</strong></article>
+    <article class="metric-card accent-green"><span class="metric-label">Receitas</span><strong class="metric-value text-profit hide-val">{{ total_receitas|brl }}</strong></article>
+    <article class="metric-card accent-coral"><span class="metric-label">Pagamentos</span><strong class="metric-value text-cost hide-val">{{ total_contas_pagas|brl }}</strong></article>
+    <article class="metric-card"><span class="metric-label">Pendentes</span><strong class="metric-value hide-val" style="color: var(--gold);">{{ total_contas_pendentes|brl }}</strong></article>
+    <article class="metric-card accent-gold"><span class="metric-label">Investimentos</span><strong class="metric-value hide-val" style="color: var(--gold);">{{ total_investido|brl }}</strong></article>
+    <article class="metric-card"><span class="metric-label">Saldo em Conta</span><strong class="metric-value hide-val {% if saldo_consolidado >= 0 %}text-profit{% else %}text-cost{% endif %}">{{ saldo_consolidado|brl }}</strong></article>
 </section>
 
-<div id="tab-visao" class="tab-content">
+<div id="tab-visao" class="tab-content fade-in">
     {% if view_mode == 'anual' %}
     <section class="summary-grid" style="grid-template-columns: 1fr; margin-top: 22px;">
         <article class="panel">
@@ -129,12 +132,12 @@
             {% set color = 'var(--green)' if orc.pct < 75 else ('var(--gold)' if orc.pct < 95 else 'var(--coral)') %}
             <div style="margin-bottom: 16px;">
                 <div style="display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: bold; margin-bottom: 4px;">
-                    <span>{{ orc.categoria }}</span><span>{{ orc.gasto|brl }} de {{ orc.limite|brl }} ({{ orc.pct }}%)</span>
+                    <span>{{ orc.categoria }}</span><span class="hide-val">{{ orc.gasto|brl }} de {{ orc.limite|brl }} ({{ orc.pct }}%)</span>
                 </div>
                 <div style="width: 100%; height: 10px; background: rgba(0,0,0,0.08); border-radius: 5px; overflow: hidden;">
                     <div style="width: {{ pct_clamped }}%; height: 100%; background: {{ color }}; transition: width 0.3s ease;"></div>
                 </div>
-                <form method="post" action="{{ url_for('delete_orcamento', id=orc.id) }}" style="text-align: right; margin-top: 4px;" onsubmit="return confirm('Tem certeza que deseja remover este limite do painel?');">
+                <form method="post" action="{{ url_for('delete_orcamento', id=orc.id) }}" style="text-align: right; margin-top: 4px;" onsubmit="return confirmAction(event, 'Tem certeza que deseja remover este limite do painel?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" style="background: none; border: none; color: var(--muted); font-size: 0.7rem; cursor: pointer;">Remover Limite</button>
                 </form>
             </div>
@@ -144,7 +147,7 @@
     {% endif %}
 </div>
 
-<div id="tab-receitas" class="tab-content">
+<div id="tab-receitas" class="tab-content fade-in">
     <section class="summary-grid" style="margin-top: 22px;">
         <article class="panel">
             <div class="panel-heading"><h2>Lançar Nova Receita</h2></div>
@@ -153,7 +156,13 @@
                 <label>Descrição <input type="text" name="descricao" placeholder="Ex: Salário, Venda" required></label>
                 <div style="display: grid; gap: 14px; grid-template-columns: 1fr 1fr;">
                     <label>Valor (R$) <input type="text" name="valor" class="currency-mask" required></label>
-                    <label>Data de Entrada <input type="date" name="data" required></label>
+                    <label>Data de Entrada 
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <input type="date" name="data" required style="flex:1;">
+                            <button type="button" class="ghost-button" onclick="setQuickDate(this, 0)" style="padding: 12px 10px; font-size:0.8rem;">Hoje</button>
+                            <button type="button" class="ghost-button" onclick="setQuickDate(this, -1)" style="padding: 12px 10px; font-size:0.8rem;">Ontem</button>
+                        </div>
+                    </label>
                 </div>
                 <label>Categoria (Origem)
                     <select name="categoria">
@@ -173,17 +182,17 @@
             </div>
             <div class="table-wrap">
                 <table id="tabelaReceitas">
-                    <thead><tr><th>Origem / Descrição</th><th>Categoria</th><th>Valor</th><th>Ações</th></tr></thead>
+                    <thead><tr><th class="sortable" onclick="sortTable(this)" title="Clique para ordenar">Origem / Descrição</th><th class="sortable" onclick="sortTable(this)">Categoria</th><th class="sortable" onclick="sortTable(this)">Valor</th><th>Ações</th></tr></thead>
                     <tbody>
                         {% for m in movimentacoes %}
                         <tr>
                             <td><strong>{{ m.descricao }}</strong><br><small style="color: var(--muted);">{{ m.data_registro.strftime('%d/%m/%Y') }}</small></td>
                             <td><span class="counter-pill">{{ m.categoria }}</span></td>
-                            <td class="text-profit" style="font-weight: 700;">+ {{ m.valor|brl }}</td>
+                            <td class="text-profit hide-val" style="font-weight: 700;">+ {{ m.valor|brl }}</td>
                             <td>
                                 <div style="display: flex; gap: 4px;">
                                     <button type="button" class="ghost-button" onclick="document.getElementById('dialog-edit-rec-{{m.id}}').showModal()">✏️</button>
-                                    <form method="post" action="{{ url_for('delete_receita', id=m.id) }}" onsubmit="return confirm('Tem certeza que deseja apagar permanentemente esta receita?');">
+                                    <form method="post" action="{{ url_for('delete_receita', id=m.id) }}" onsubmit="return confirmAction(event, 'Tem certeza que deseja apagar permanentemente esta receita?');">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="ghost-button danger-button">X</button>
                                     </form>
                                 </div>
@@ -213,7 +222,7 @@
     </section>
 </div>
 
-<div id="tab-cronograma" class="tab-content">
+<div id="tab-cronograma" class="tab-content fade-in">
     <section class="summary-grid" style="margin-top: 22px; grid-template-columns: 1fr;">
         <article class="panel">
             <div class="panel-heading"><h2>Agendar Despesa (Fixa, Variável ou Assinatura)</h2></div>
@@ -246,7 +255,7 @@
         </div>
         <div class="table-wrap">
             <table id="tabelaContas">
-                <thead><tr><th>Status</th><th>Descrição / Responsável</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Status</th><th class="sortable" onclick="sortTable(this)">Descrição</th><th class="sortable" onclick="sortTable(this)">Categoria</th><th class="sortable" onclick="sortTable(this)">Vencimento</th><th class="sortable" onclick="sortTable(this)">Valor</th><th>Ações</th></tr></thead>
                 <tbody>
                     {% for item in itens_cronograma %}
                     {% set vencida = not item.pago and item.data_vencimento < hoje %}
@@ -274,15 +283,15 @@
                         </td>
                         <td><span class="counter-pill">{{ item.categoria }}</span></td>
                         <td><strong>{{ item.data_vencimento.strftime('%d/%m/%Y') }}</strong></td>
-                        <td class="text-cost" style="font-weight: 700;">- {{ item.valor|brl }}</td>
+                        <td class="text-cost hide-val" style="font-weight: 700;">- {{ item.valor|brl }}</td>
                         <td>
                             {% if not item.is_fatura %}
                             <div style="display: flex; gap: 4px;">
                                 <button type="button" class="ghost-button" onclick="document.getElementById('dialog-edit-cta-{{item.id}}').showModal()">✏️</button>
-                                <form method="post" action="{{ url_for('delete_conta', conta_id=item.id) }}" onsubmit="return confirm('Apagar esta conta? ATENÇÃO: Se for parcelada, escolha se quer apagar todas marcando a caixa.');">
+                                <form method="post" action="{{ url_for('delete_conta', conta_id=item.id) }}" onsubmit="return confirmAction(event, 'Apagar esta conta? Se for parcelada, escolha se quer apagar todas na janela de edição.');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="ghost-button danger-button">X</button>
-                                    {% if item.total_parcelas > 1 %}<label style="font-size: 0.7rem; display: block;"><input type="checkbox" name="deletar_tudo" value="sim"> Apagar Todas</label>{% endif %}
+                                    {% if item.total_parcelas > 1 %}<label style="font-size: 0.7rem; display: block; margin-top:2px;"><input type="checkbox" name="deletar_tudo" value="sim"> Excluir Todas</label>{% endif %}
                                 </form>
                             </div>
                             <dialog id="dialog-edit-cta-{{item.id}}">
@@ -310,7 +319,7 @@
     </section>
 </div>
 
-<div id="tab-cartao" class="tab-content">
+<div id="tab-cartao" class="tab-content fade-in">
     {% if not cartoes %}
     <div style="text-align: center; padding: 40px; background: rgba(0,0,0,0.02); border-radius: 12px; margin-top: 22px;">
         <h3>Nenhum cartão cadastrado</h3><a href="{{ url_for('meus_cartoes') }}" class="primary-button" style="display:inline-block; margin-top:12px;">Criar Cartão</a>
@@ -329,7 +338,13 @@
                     <label>Parcelas <input type="number" name="total_parcelas" min="1" value="1" required></label>
                 </div>
                 <div style="display: grid; gap: 14px; grid-template-columns: 1fr 1fr;">
-                    <label>Data Compra <input type="date" name="data_compra" required></label>
+                    <label>Data Compra 
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            <input type="date" name="data_compra" required style="flex:1;">
+                            <button type="button" class="ghost-button" onclick="setQuickDate(this, 0)" style="padding: 12px 6px; font-size:0.75rem;">Hoje</button>
+                            <button type="button" class="ghost-button" onclick="setQuickDate(this, -1)" style="padding: 12px 6px; font-size:0.75rem;">Ontem</button>
+                        </div>
+                    </label>
                     <label>Categoria <select name="categoria">{% for c in categorias_despesa %}<option value="{{c.nome}}">{{c.nome}}</option>{% endfor %}</select></label>
                 </div>
                 <button type="submit" class="primary-button" style="margin-top:10px; width: 100%;">Registrar Compra</button>
@@ -342,7 +357,7 @@
             {% set color = 'var(--green)' if c_info.pct < 50 else ('var(--gold)' if c_info.pct < 85 else 'var(--coral)') %}
             <div style="margin-bottom: 16px;">
                 <div style="display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: bold; margin-bottom: 4px;">
-                    <span>{{ c_info.nome }}</span><span>{{ c_info.uso|brl }} / {{ c_info.limite|brl }} ({{ c_info.pct }}%)</span>
+                    <span>{{ c_info.nome }}</span><span class="hide-val">{{ c_info.uso|brl }} / {{ c_info.limite|brl }} ({{ c_info.pct }}%)</span>
                 </div>
                 <div style="width: 100%; height: 10px; background: rgba(0,0,0,0.08); border-radius: 5px; overflow: hidden;">
                     <div style="width: {{ c_info.pct }}%; height: 100%; background: {{ color }}; transition: width 0.3s ease;"></div>
@@ -357,7 +372,7 @@
         <div class="panel-heading"><h2>Despesas na Fatura Deste Mês</h2></div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Item</th><th>Status</th><th>Data Compra</th><th>Valor Parcela</th><th>Ações</th></tr></thead>
+                <thead><tr><th class="sortable" onclick="sortTable(this)">Item</th><th>Status</th><th class="sortable" onclick="sortTable(this)">Data Compra</th><th class="sortable" onclick="sortTable(this)">Valor Parcela</th><th>Ações</th></tr></thead>
                 <tbody>
                     {% for dc in despesas_cartao %}
                     <tr>
@@ -369,11 +384,11 @@
                             </form>
                         </td>
                         <td>{{dc.data_compra.strftime('%d/%m/%Y')}}</td>
-                        <td class="text-cost" style="font-weight:700;">- {{dc.valor|brl}}</td>
+                        <td class="text-cost hide-val" style="font-weight:700;">- {{dc.valor|brl}}</td>
                         <td>
                             <div style="display:flex; gap:4px;">
                                 <button type="button" class="ghost-button" onclick="document.getElementById('dialog-edit-dc-{{dc.id}}').showModal()">✏️</button>
-                                <form method="post" action="{{ url_for('delete_despesa_cartao', id=dc.id) }}" onsubmit="return confirm('Tem certeza que deseja apagar esta compra da sua fatura?');">
+                                <form method="post" action="{{ url_for('delete_despesa_cartao', id=dc.id) }}" onsubmit="return confirmAction(event, 'Tem certeza que deseja apagar esta compra da sua fatura?');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="ghost-button danger-button">X</button>
                                 </form>
                             </div>
@@ -399,7 +414,7 @@
     {% endif %}
 </div>
 
-<div id="tab-patrimonio" class="tab-content">
+<div id="tab-patrimonio" class="tab-content fade-in">
     <section class="summary-grid" style="margin-top: 22px;">
         <article class="panel">
             <div class="panel-heading"><h2>Minhas Metas</h2></div>
@@ -407,18 +422,18 @@
             {% set pct_clamped = 100 if item.pct > 100 else item.pct %}
             <div class="meta-item" style="margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px dashed var(--line);">
                 <div style="display: flex; justify-content: space-between; font-weight: bold;">
-                    <span>🎯 {{ item.objetivo }}</span><span>{{ item.pct }}% (Alvo: {{ item.valor_alvo|brl }})</span>
+                    <span>🎯 {{ item.objetivo }}</span><span class="hide-val">{{ item.pct }}% (Alvo: {{ item.valor_alvo|brl }})</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-top: 4px; margin-bottom: 6px;">
-                    <span style="color: var(--muted);">Acumulado: <strong>{{ item.total_acumulado|brl }}</strong></span>
-                    {% if item.sugestao_mensal > 0 %}<span style="color: var(--gold); font-weight:700;">Ideal: {{ item.sugestao_mensal|brl }} /mês</span>
+                    <span style="color: var(--muted);">Acumulado: <strong class="hide-val">{{ item.total_acumulado|brl }}</strong></span>
+                    {% if item.sugestao_mensal > 0 %}<span style="color: var(--gold); font-weight:700;" class="hide-val">Ideal: {{ item.sugestao_mensal|brl }} /mês</span>
                     {% else %}<span style="color: var(--green); font-weight:700;">✅ Concluída!</span>{% endif %}
                 </div>
                 <div class="progress-bar-bg" style="width: 100%; height: 12px; background: rgba(0,0,0,0.08); border-radius: 6px; overflow: hidden; margin-top: 10px;">
                     <div class="progress-bar-fill" style="width: {{ pct_clamped }}%; height: 100%; background: linear-gradient(90deg, var(--gold), var(--green));"></div>
                 </div>
                 <div style="display:flex; gap:6px; margin-top:8px;">
-                    <form method="post" action="{{ url_for('delete_meta', id=item.id) }}" onsubmit="return confirm('Excluir esta meta? Os investimentos vinculados a ela NÃO serão apagados, apenas desvinculados.');">
+                    <form method="post" action="{{ url_for('delete_meta', id=item.id) }}" onsubmit="return confirmAction(event, 'Excluir esta meta? Os investimentos vinculados a ela NÃO serão apagados, apenas desvinculados.');">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="ghost-button danger-button" style="font-size:0.75rem; padding:4px 8px;">Remover</button>
                     </form>
                 </div>
@@ -433,7 +448,7 @@
                     <label>Quanto quer receber por mês? (R$) <input type="text" id="sim_renda_mensal" class="currency-mask" placeholder="Ex: 5.000,00"></label>
                     <label>Daqui a quantos anos? <input type="number" id="sim_anos" placeholder="Ex: 20"></label>
                     <button type="button" class="primary-button" onclick="calcularAposentadoria()">Calcular Patrimônio Necessário</button>
-                    <div id="resultado_aposentadoria" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem; line-height: 1.6; display: none;"></div>
+                    <div id="resultado_aposentadoria" class="hide-val" style="margin-top: 15px; font-weight: bold; font-size: 0.95rem; line-height: 1.6; display: none;"></div>
                 </div>
             </div>
         </article>
@@ -467,29 +482,29 @@
 
     <section class="panel panel-table" style="margin-top: 22px;">
         <div class="panel-heading">
-            <div><h2>Carteira Ativa</h2><p style="color: var(--muted); margin: 0;">Total Atual: <strong>{{ patrimonio_total_acumulado|brl }}</strong></p></div>
+            <div><h2>Carteira Ativa</h2><p style="color: var(--muted); margin: 0;">Total Atual: <strong class="hide-val">{{ patrimonio_total_acumulado|brl }}</strong></p></div>
         </div>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>Nome</th><th>Valor Investido</th><th>Valor Atual</th><th>Lucro</th><th>Ações</th></tr></thead>
+                <thead><tr><th class="sortable" onclick="sortTable(this)">Nome</th><th class="sortable" onclick="sortTable(this)">Valor Investido</th><th>Valor Atual</th><th class="sortable" onclick="sortTable(this)">Lucro</th><th>Ações</th></tr></thead>
                 <tbody>
                     {% for i in carteira_ativa %}
                     <tr>
                         <td><strong>{{ i.ativo }}</strong></td>
-                        <td>{{ i.valor_aporte|brl }}</td>
+                        <td class="hide-val">{{ i.valor_aporte|brl }}</td>
                         <td>
                             <form method="post" action="{{ url_for('update_investimento', id=i.id) }}" style="display:flex; align-items:center; gap:4px;">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                <input type="text" name="valor_atual" class="currency-mask" value="{{ i.valor_atual | money_input }}" style="width: 110px; padding: 6px; border-radius: 8px;">
+                                <input type="text" name="valor_atual" class="currency-mask hide-val" value="{{ i.valor_atual | money_input }}" style="width: 110px; padding: 6px; border-radius: 8px;">
                                 <button type="submit" class="ghost-button">↻</button>
                             </form>
                         </td>
                         <td>
                             {% set lucro = i.valor_atual - i.valor_aporte %}
-                            <strong class="{% if lucro > 0 %}text-profit{% elif lucro < 0 %}text-cost{% endif %}">{{ lucro|brl }}</strong>
+                            <strong class="hide-val {% if lucro > 0 %}text-profit{% elif lucro < 0 %}text-cost{% endif %}">{{ lucro|brl }}</strong>
                         </td>
                         <td>
-                            <form method="post" action="{{ url_for('resgatar_investimento', id=i.id) }}" onsubmit="return confirm('Deseja resgatar este investimento? O valor será enviado para o saldo da sua conta como Receita.');">
+                            <form method="post" action="{{ url_for('resgatar_investimento', id=i.id) }}" onsubmit="return confirmAction(event, 'Deseja resgatar este investimento? O valor será enviado para o saldo da sua conta como Receita.');">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="ghost-button" style="color: var(--green); border-color: var(--green);">Resgatar</button>
                             </form>
                         </td>
@@ -504,12 +519,18 @@
 <nav class="bottom-nav">
     <a href="#" class="nav-item active" onclick="switchTab('tab-visao'); return false;"><i>📊</i><span>Visão</span></a>
     <a href="#" class="nav-item" onclick="switchTab('tab-receitas'); return false;"><i>📥</i><span>Receitas</span></a>
-    <a href="#" class="nav-item" onclick="switchTab('tab-cronograma'); return false;"><i>⏳</i><span>Contas</span></a>
+    <a href="#" class="nav-item" onclick="switchTab('tab-cronograma'); return false;"><i>⏳{% if alertas %}<span class="tab-badge" style="position:absolute; margin-left:-5px; margin-top:-5px;"></span>{% endif %}</i><span>Contas</span></a>
     <a href="#" class="nav-item" onclick="switchTab('tab-cartao'); return false;"><i>💳</i><span>Cartões</span></a>
     <a href="#" class="nav-item" onclick="switchTab('tab-patrimonio'); return false;"><i>🎯</i><span>Metas</span></a>
 </nav>
 
 <script>
+// UX 10: Saudação Dinâmica Baseada na Hora (Apenas no carregamento)
+document.addEventListener("DOMContentLoaded", function() {
+    const hr = new Date().getHours();
+    document.getElementById('saudacao').innerText = hr < 12 ? "☀️ Bom dia" : hr < 18 ? "☕ Boa tarde" : "🌙 Boa noite";
+});
+
 function toggleMetrics() {
     const grid = document.getElementById('metricGrid');
     const icon = document.getElementById('metrics-toggle-icon');
@@ -577,11 +598,11 @@ function calcularAposentadoria() {
     const format = (val) => "R$ " + val.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     res.style.display = 'block';
     res.innerHTML = `
-        <p style="color: var(--green); margin-bottom: 8px;">🎯 Para receber de forma segura <b>${format(renda)}</b>/mês pelo resto da vida (já contando com a desvalorização da moeda), você precisa juntar:</p>
-        <h3 style="color: var(--text); margin-bottom: 12px; font-size: 1.5rem;">${format(patrimonio_necessario)}</h3>
+        <p style="color: var(--green); margin-bottom: 8px;">🎯 Para receber de forma segura <b class="hide-val">${format(renda)}</b>/mês pelo resto da vida (já contando com a desvalorização da moeda), você precisa juntar:</p>
+        <h3 style="color: var(--text); margin-bottom: 12px; font-size: 1.5rem;" class="hide-val">${format(patrimonio_necessario)}</h3>
         <p>Com um prazo de <b>${anos} anos</b>, estimando juros reais a seu favor, precisará investir no mínimo:</p>
         <div style="padding: 10px; background: rgba(200, 141, 29, 0.1); border-radius: 8px; color: var(--gold); text-align: center;">
-            Aporte Ideal: <b>${format(aporte_mensal)} por mês</b>
+            Aporte Ideal: <b class="hide-val">${format(aporte_mensal)} por mês</b>
         </div>
     `;
 }
@@ -598,12 +619,12 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 function switchTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active-content'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     
     const target = document.getElementById(tabId);
-    if (target) target.style.display = 'block';
+    if (target) target.classList.add('active-content');
     
     const btnDesktop = document.querySelector(`.tab-btn[onclick="switchTab('${tabId}')"]`);
     if (btnDesktop) btnDesktop.classList.add('active');
@@ -615,6 +636,7 @@ function switchTab(tabId) {
     const url = new URL(window.location);
     url.searchParams.set('tab', tabId);
     window.history.pushState({}, '', url);
+    if(navigator.vibrate) navigator.vibrate(20);
 }
 
 function toggleParc() {
@@ -622,7 +644,7 @@ function toggleParc() {
     document.getElementById("campo_parc").style.display = (tipo === "parcelado") ? "grid" : "none";
 }
 
-// CORES DE GRAFICOS: Super Paleta com 35 cores distintas para não haver repetidos
+// CORES DE GRAFICOS
 const chartColors = [
     '#0f8a63', '#d45a3d', '#1a5caf', '#c88d1d', '#8e44ad', '#2c3e50', 
     '#16a085', '#e67e22', '#c0392b', '#2980b9', '#f39c12', '#27ae60', 
@@ -632,6 +654,20 @@ const chartColors = [
     '#a29bfe', '#fd79a8', '#fdcb6e', '#e17055', '#00cec9', '#74b9ff'
 ];
 
+// UX 11: Tooltips Ricos Formatação de Moeda
+const tooltipFormat = {
+    callbacks: {
+        label: function(context) {
+            let label = context.label || '';
+            if (label) { label += ': '; }
+            if (context.raw !== null) {
+                label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.raw);
+            }
+            return label;
+        }
+    }
+};
+
 const ctxCat = document.getElementById('categoryChart');
 if (ctxCat) {
     new Chart(ctxCat.getContext('2d'), { 
@@ -640,7 +676,7 @@ if (ctxCat) {
             labels: {{ chart_labels|tojson }}, 
             datasets: [{ data: {{ chart_data|tojson }}, backgroundColor: chartColors }] 
         }, 
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } } 
+        options: { responsive: true, plugins: { legend: { position: 'bottom' }, tooltip: tooltipFormat } } 
     });
 }
 
@@ -652,7 +688,7 @@ if (ctxRec) {
             labels: {{ chart_labels_receitas|tojson }},
             datasets: [{ data: {{ chart_data_receitas|tojson }}, backgroundColor: chartColors.slice().reverse() }]
         },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        options: { responsive: true, plugins: { legend: { position: 'bottom' }, tooltip: tooltipFormat } }
     });
 }
 
@@ -667,7 +703,8 @@ if (ctxComp) {
                 { label: 'Receitas', data: {{ anual_receitas|tojson }}, backgroundColor: '#0f8a63' }, 
                 { label: 'Despesas', data: {{ anual_despesas|tojson }}, backgroundColor: '#d45a3d' }
             ] 
-        }
+        },
+        options: { plugins: { tooltip: tooltipFormat } }
     });
 }
 {% endif %}
