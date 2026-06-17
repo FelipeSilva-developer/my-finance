@@ -6,17 +6,17 @@
     <style>
         body { font-family: Arial, sans-serif; color: #333; margin: 40px; }
         .cabecalho { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-        .resumo { display: flex; justify-content: space-between; background: #f0f0f0; padding: 20px; border-radius: 8px; font-weight: bold; }
+        .resumo { display: flex; justify-content: space-between; background: #f0f0f0; padding: 20px; border-radius: 8px; font-weight: bold; font-size: 1.1em; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; margin-bottom: 40px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: #f8f9fa; }
-        .valor { text-align: right; }
-        .positivo { color: green; }
-        .negativo { color: red; }
+        .valor { text-align: right; font-weight: bold; }
+        .positivo { color: #0f8a63; }
+        .negativo { color: #d45a3d; }
         @media print {
             body { margin: 0; }
-            .resumo { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .resumo { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #f0f0f0 !important; }
+            th { -webkit-print-color-adjust: exact; print-color-adjust: exact; background-color: #f8f9fa !important; }
         }
     </style>
 </head>
@@ -28,9 +28,9 @@
     </div>
 
     <div class="resumo">
-        <span>Receitas: <span class="positivo">{{ total_receitas | brl }}</span></span>
-        <span>Despesas: <span class="negativo">{{ total_despesas | brl }}</span></span>
-        <span>Saldo do Período: {{ saldo | brl }}</span>
+        <span>Receitas: <span class="positivo">+ {{ total_receitas | brl }}</span></span>
+        <span>Despesas: <span class="negativo">- {{ total_despesas | brl }}</span></span>
+        <span>Saldo do Período: <span class="{% if saldo < 0 %}negativo{% else %}positivo{% endif %}">{{ saldo | brl }}</span></span>
     </div>
 
     <h3>Entradas (Receitas)</h3>
@@ -41,7 +41,7 @@
             <td>{{ r.data_registro.strftime('%d/%m/%Y') }}</td>
             <td>{{ r.descricao }}</td>
             <td>{{ r.categoria }}</td>
-            <td class="valor positivo">{{ r.valor | brl }}</td>
+            <td class="valor positivo">+ {{ r.valor | brl }}</td>
         </tr>
         {% else %}
         <tr><td colspan="4" style="text-align: center;">Nenhuma receita registrada neste período.</td></tr>
@@ -57,7 +57,7 @@
             <td>{{ d.descricao }}</td>
             <td>{{ d.categoria }}</td>
             <td>{{ 'Pago' if d.pago else 'Pendente' }}</td>
-            <td class="valor negativo">{{ d.valor | brl }}</td>
+            <td class="valor negativo">- {{ d.valor | brl }}</td>
         </tr>
         {% else %}
         <tr><td colspan="5" style="text-align: center;">Nenhuma despesa registrada neste período.</td></tr>

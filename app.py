@@ -172,10 +172,13 @@ def to_decimal(value: object) -> Decimal:
     if "," in val_str: val_str = val_str.replace(".", "").replace(",", ".")
     return Decimal(val_str).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
+# ATUALIZAÇÃO BRL FILTER: O SINAL DE MENOS AGORA FICA BEM VISÍVEL (- R$ 100,00)
 @app.template_filter("brl")
 def brl_filter(value) -> str:
-    dec_val = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    return "R$ " + f"{dec_val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    try: dec_val = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    except: dec_val = ZERO
+    prefix = "- R$ " if dec_val < 0 else "R$ "
+    return prefix + f"{abs(dec_val):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 @app.template_filter("money_input")
 def money_input_filter(value) -> str:
@@ -438,27 +441,22 @@ def perfil():
         return redirect(url_for("perfil"))
     return render_template("perfil.html", user=user)
 
-# --- CORREÇÃO DO PDF: Agora suporta Cartão de Crédito e Filtro Anual perfeitamente ---
 @app.route("/relatorio_pdf/<int:mes>/<int:ano>")
 @normal_user_required
 def relatorio_pdf(mes, ano):
     uid = session["user_id"]
     if mes == 0:
-        fd = date(ano, 1, 1)
-        ld = date(ano, 12, 31)
-        mes_texto = f"Ano Completo ({ano})"
+        fd, ld, mes_texto = date(ano, 1, 1), date(ano, 12, 31), f"Ano Completo ({ano})"
         despesas_cartao = DespesaCartao.query.filter_by(user_id=uid, ano_fatura=ano).all()
     else:
         fd = date(ano, mes, 1)
         _, last_d = calendar.monthrange(ano, mes)
-        ld = date(ano, mes, last_d)
-        mes_texto = f"{mes:02d}/{ano}"
+        ld, mes_texto = date(ano, mes, last_d), f"{mes:02d}/{ano}"
         despesas_cartao = DespesaCartao.query.filter_by(user_id=uid, mes_fatura=mes, ano_fatura=ano).all()
         
     mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= fd, Movimentacao.data_registro <= ld).order_by(Movimentacao.data_registro.desc()).all()
     contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= fd, ContaPagar.data_vencimento <= ld).order_by(ContaPagar.data_vencimento.asc()).all()
     
-    # Criamos um "objeto falso" para simular a DespesaCartao como se fosse uma conta comum no PDF
     class RelatorioItem:
         def __init__(self, data, desc, status, valor, categoria):
             self.data_vencimento = data
@@ -474,7 +472,6 @@ def relatorio_pdf(mes, ano):
     for dc in despesas_cartao:
         despesas_completas.append(RelatorioItem(dc.data_compra, f"{dc.descricao} (Cartão {dc.cartao.nome})", dc.pago, dc.valor, dc.categoria))
         
-    # Organiza tudo por data de vencimento / compra para o PDF ficar em ordem cronológica
     despesas_completas.sort(key=lambda x: x.data_vencimento)
     
     total_receitas = sum([to_decimal(m.valor) for m in mov_query])
