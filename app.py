@@ -438,23 +438,49 @@ def perfil():
         return redirect(url_for("perfil"))
     return render_template("perfil.html", user=user)
 
+# --- CORREÇÃO DO PDF: Agora suporta Cartão de Crédito e Filtro Anual perfeitamente ---
 @app.route("/relatorio_pdf/<int:mes>/<int:ano>")
 @normal_user_required
 def relatorio_pdf(mes, ano):
     uid = session["user_id"]
     if mes == 0:
-        fd, ld, mes_texto = date(ano, 1, 1), date(ano, 12, 31), f"Ano Completo ({ano})"
+        fd = date(ano, 1, 1)
+        ld = date(ano, 12, 31)
+        mes_texto = f"Ano Completo ({ano})"
+        despesas_cartao = DespesaCartao.query.filter_by(user_id=uid, ano_fatura=ano).all()
     else:
         fd = date(ano, mes, 1)
         _, last_d = calendar.monthrange(ano, mes)
-        ld, mes_texto = date(ano, mes, last_d), f"{mes:02d}/{ano}"
+        ld = date(ano, mes, last_d)
+        mes_texto = f"{mes:02d}/{ano}"
+        despesas_cartao = DespesaCartao.query.filter_by(user_id=uid, mes_fatura=mes, ano_fatura=ano).all()
         
     mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= fd, Movimentacao.data_registro <= ld).order_by(Movimentacao.data_registro.desc()).all()
     contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= fd, ContaPagar.data_vencimento <= ld).order_by(ContaPagar.data_vencimento.asc()).all()
-    total_receitas = sum([to_decimal(m.valor) for m in mov_query])
-    total_despesas = sum([to_decimal(c.valor) for c in contas_query])
     
-    return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes_texto=mes_texto, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=(total_receitas - total_despesas))
+    # Criamos um "objeto falso" para simular a DespesaCartao como se fosse uma conta comum no PDF
+    class RelatorioItem:
+        def __init__(self, data, desc, status, valor, categoria):
+            self.data_vencimento = data
+            self.descricao = desc
+            self.pago = status
+            self.valor = valor
+            self.categoria = categoria
+
+    despesas_completas = []
+    for c in contas_query:
+        despesas_completas.append(RelatorioItem(c.data_vencimento, c.descricao, c.pago, c.valor, c.categoria))
+        
+    for dc in despesas_cartao:
+        despesas_completas.append(RelatorioItem(dc.data_compra, f"{dc.descricao} (Cartão {dc.cartao.nome})", dc.pago, dc.valor, dc.categoria))
+        
+    # Organiza tudo por data de vencimento / compra para o PDF ficar em ordem cronológica
+    despesas_completas.sort(key=lambda x: x.data_vencimento)
+    
+    total_receitas = sum([to_decimal(m.valor) for m in mov_query])
+    total_despesas = sum([to_decimal(d.valor) for d in despesas_completas])
+    
+    return render_template("relatorio.html", receitas=mov_query, despesas=despesas_completas, mes_texto=mes_texto, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=(total_receitas - total_despesas))
 
 @app.route("/configuracoes", methods=["GET"])
 @admin_required
@@ -500,7 +526,6 @@ def delete_user(id):
 def add_categoria():
     nome = request.form.get("nome", "").strip()
     tipo_base = request.form.get("tipo", "despesa")
-    
     if tipo_base == "despesa":
         macro = request.form.get("macro_grupo", "essencial")
         tipo_final = f"despesa_{macro}"
@@ -512,27 +537,22 @@ def add_categoria():
         db.session.commit()
     return redirect(url_for("configuracoes"))
 
-# --- A MÁGICA DA EDIÇÃO EM CASCATA ---
 @app.route("/categoria/<int:id>/edit", methods=["POST"])
 @admin_required
 def edit_categoria(id):
     cat = Categoria.query.get_or_404(id)
     old_nome = cat.nome
     novo_nome = request.form.get("nome", "").strip()
-    
     if "despesa" in cat.tipo:
         macro = request.form.get("macro_grupo", "essencial")
         cat.tipo = f"despesa_{macro}"
-
     if novo_nome and novo_nome != old_nome:
         if not Categoria.query.filter(Categoria.nome == novo_nome, Categoria.tipo == cat.tipo, Categoria.id != id).first():
             cat.nome = novo_nome
-            # Atualização invisível para não corromper os dados já lançados!
             ContaPagar.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
             Movimentacao.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
             DespesaCartao.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
             OrcamentoMensal.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
-
     db.session.commit()
     flash("Categoria atualizada com sucesso!", "success")
     return redirect(url_for("configuracoes"))
