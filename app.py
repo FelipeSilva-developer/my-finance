@@ -350,6 +350,16 @@ def dashboard():
             'gasto': gasto_cat, 'pct': float(pct.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
         })
 
+    anual_receitas = [0.0] * 12
+    anual_despesas = [0.0] * 12
+    if view_mode == "anual":
+        for m_item in movimentacoes:
+            if m_item.data_registro: anual_receitas[m_item.data_registro.month - 1] += float(to_decimal(m_item.valor))
+        for c_item in contas:
+            if c_item.data_vencimento: anual_despesas[c_item.data_vencimento.month - 1] += float(to_decimal(c_item.valor))
+        for dc_item in despesas_cartao:
+            if dc_item.mes_fatura: anual_despesas[dc_item.mes_fatura - 1] += float(to_decimal(dc_item.valor))
+
     meses_nomes = {1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho", 7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"}
 
     return render_template(
@@ -361,7 +371,7 @@ def dashboard():
         chart_labels_receitas=chart_labels_receitas, chart_data_receitas=chart_data_receitas,
         view_mode=view_mode, selected_month=selected_month, selected_year=selected_year, meses_nomes=meses_nomes, hoje=hoje,
         categorias_despesa=categorias_despesa, categorias_receita=categorias_receita, cartoes=cartoes, despesas_cartao=despesas_cartao, 
-        current_tab=current_tab, metas=metas_db
+        current_tab=current_tab, anual_receitas=anual_receitas, anual_despesas=anual_despesas, metas=metas_db
     )
 
 @app.route("/orcamento/auto", methods=["POST"])
@@ -428,43 +438,23 @@ def perfil():
         return redirect(url_for("perfil"))
     return render_template("perfil.html", user=user)
 
-# A ROTA PDF AGORA INCLUI OS CARTÕES E RESOLVE O BUG DO ANO:
 @app.route("/relatorio_pdf/<int:mes>/<int:ano>")
 @normal_user_required
 def relatorio_pdf(mes, ano):
     uid = session["user_id"]
     if mes == 0:
         fd, ld, mes_texto = date(ano, 1, 1), date(ano, 12, 31), f"Ano Completo ({ano})"
-        despesas_cartao = DespesaCartao.query.filter_by(user_id=uid, ano_fatura=ano).all()
     else:
         fd = date(ano, mes, 1)
         _, last_d = calendar.monthrange(ano, mes)
         ld, mes_texto = date(ano, mes, last_d), f"{mes:02d}/{ano}"
-        despesas_cartao = DespesaCartao.query.filter_by(user_id=uid, mes_fatura=mes, ano_fatura=ano).all()
         
     mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= fd, Movimentacao.data_registro <= ld).order_by(Movimentacao.data_registro.desc()).all()
     contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= fd, ContaPagar.data_vencimento <= ld).order_by(ContaPagar.data_vencimento.asc()).all()
-    
-    # Criamos um "objeto falso" para simular a DespesaCartao como se fosse uma conta comum no PDF
-    class RelatorioItem:
-        def __init__(self, data, desc, status, valor, categoria):
-            self.data_vencimento = data
-            self.descricao = desc
-            self.pago = status
-            self.valor = valor
-            self.categoria = categoria
-
-    despesas_completas = list(contas_query)
-    for dc in despesas_cartao:
-        despesas_completas.append(RelatorioItem(dc.data_compra, f"{dc.descricao} (Cartão {dc.cartao.nome})", dc.pago, dc.valor, dc.categoria))
-        
-    # Organiza tudo por data de vencimento / compra
-    despesas_completas.sort(key=lambda x: x.data_vencimento)
-    
     total_receitas = sum([to_decimal(m.valor) for m in mov_query])
-    total_despesas = sum([to_decimal(d.valor) for d in despesas_completas])
+    total_despesas = sum([to_decimal(c.valor) for c in contas_query])
     
-    return render_template("relatorio.html", receitas=mov_query, despesas=despesas_completas, mes_texto=mes_texto, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=(total_receitas - total_despesas))
+    return render_template("relatorio.html", receitas=mov_query, despesas=contas_query, mes_texto=mes_texto, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=(total_receitas - total_despesas))
 
 @app.route("/configuracoes", methods=["GET"])
 @admin_required
@@ -510,6 +500,7 @@ def delete_user(id):
 def add_categoria():
     nome = request.form.get("nome", "").strip()
     tipo_base = request.form.get("tipo", "despesa")
+    
     if tipo_base == "despesa":
         macro = request.form.get("macro_grupo", "essencial")
         tipo_final = f"despesa_{macro}"
@@ -521,22 +512,27 @@ def add_categoria():
         db.session.commit()
     return redirect(url_for("configuracoes"))
 
+# --- A MÁGICA DA EDIÇÃO EM CASCATA ---
 @app.route("/categoria/<int:id>/edit", methods=["POST"])
 @admin_required
 def edit_categoria(id):
     cat = Categoria.query.get_or_404(id)
     old_nome = cat.nome
     novo_nome = request.form.get("nome", "").strip()
+    
     if "despesa" in cat.tipo:
         macro = request.form.get("macro_grupo", "essencial")
         cat.tipo = f"despesa_{macro}"
+
     if novo_nome and novo_nome != old_nome:
         if not Categoria.query.filter(Categoria.nome == novo_nome, Categoria.tipo == cat.tipo, Categoria.id != id).first():
             cat.nome = novo_nome
+            # Atualização invisível para não corromper os dados já lançados!
             ContaPagar.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
             Movimentacao.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
             DespesaCartao.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
             OrcamentoMensal.query.filter_by(categoria=old_nome).update({"categoria": novo_nome})
+
     db.session.commit()
     flash("Categoria atualizada com sucesso!", "success")
     return redirect(url_for("configuracoes"))

@@ -71,21 +71,13 @@
 </section>
 
 <div id="tab-visao" class="tab-content">
-    
     <section class="summary-grid">
         <article class="panel">
             <div class="panel-heading"><h2>Distribuição de Gastos</h2></div>
             <div style="max-height: 280px; display: flex; justify-content: center;"><canvas id="categoryChart"></canvas></div>
         </article>
 
-        <article class="panel">
-            <div class="panel-heading"><h2>Distribuição de Receitas</h2></div>
-            <div style="max-height: 280px; display: flex; justify-content: center;"><canvas id="receitaChart"></canvas></div>
-        </article>
-    </section>
-
-    {% if view_mode == 'mensal' %}
-    <section class="summary-grid" style="grid-template-columns: 1fr;">
+        {% if view_mode == 'mensal' %}
         <article class="panel">
             <div class="panel-heading"><h2>Planejador de Orçamento Inteligente</h2></div>
             <div class="stack-form" style="margin-bottom: 24px; padding: 15px; background: rgba(0,0,0,0.03); border-radius: 12px; border: 1px solid var(--line);">
@@ -130,8 +122,13 @@
             </div>
             {% else %}<p style="color: var(--muted); text-align: center;">Não existem orçamentos definidos.</p>{% endfor %}
         </article>
+        {% else %}
+        <article class="panel">
+            <div class="panel-heading"><h2>Distribuição de Receitas (Anual)</h2></div>
+            <div style="max-height: 280px; display: flex; justify-content: center;"><canvas id="receitaChart"></canvas></div>
+        </article>
+        {% endif %}
     </section>
-    {% endif %}
 </div>
 
 <div id="tab-receitas" class="tab-content">
@@ -612,26 +609,12 @@ function toggleParc() {
     document.getElementById("campo_parc").style.display = (tipo === "parcelado") ? "grid" : "none";
 }
 
-// CORES DE GRAFICOS: Paleta com 30 cores distintas para não repetir!
-const chartColors = [
-    '#0f8a63', '#d45a3d', '#1a5caf', '#c88d1d', '#8e44ad', '#2c3e50', 
-    '#16a085', '#e67e22', '#c0392b', '#2980b9', '#f39c12', '#27ae60', 
-    '#f1c40f', '#e74c3c', '#95a5a6', '#1abc9c', '#3498db', '#9b59b6', 
-    '#34495e', '#ff9ff3', '#feca57', '#ff6b6b', '#48dbfb', '#1dd1a1', 
-    '#5f27cd', '#c8d6e5', '#576574', '#00b894', '#0984e3', '#d63031'
-];
+const ctx = document.getElementById('categoryChart').getContext('2d');
+new Chart(ctx, { type: 'doughnut', data: { labels: {{ chart_labels|tojson }}, datasets: [{ data: {{ chart_data|tojson }}, backgroundColor: ['#0f8a63', '#d45a3d', '#c88d1d', '#1a5caf', '#7b6a4b', '#8e44ad', '#16a085', '#e67e22', '#2c3e50', '#c0392b'] }] }, options: { responsive: true, plugins: { legend: { position: 'bottom' } } } });
 
-const ctxCat = document.getElementById('categoryChart');
-if (ctxCat) {
-    new Chart(ctxCat.getContext('2d'), { 
-        type: 'doughnut', 
-        data: { 
-            labels: {{ chart_labels|tojson }}, 
-            datasets: [{ data: {{ chart_data|tojson }}, backgroundColor: chartColors }] 
-        }, 
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } } 
-    });
-}
+{% if view_mode == 'anual' %}
+const ctxComp = document.getElementById('comparativeChart').getContext('2d');
+new Chart(ctxComp, { type: 'bar', data: { labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'], datasets: [{ label: 'Receitas', data: {{ anual_receitas|tojson }}, backgroundColor: '#0f8a63' }, { label: 'Despesas', data: {{ anual_despesas|tojson }}, backgroundColor: '#d45a3d' }] }});
 
 const ctxRec = document.getElementById('receitaChart');
 if (ctxRec) {
@@ -639,11 +622,11 @@ if (ctxRec) {
         type: 'doughnut',
         data: {
             labels: {{ chart_labels_receitas|tojson }},
-            datasets: [{ data: {{ chart_data_receitas|tojson }}, backgroundColor: chartColors.slice().reverse() }]
+            datasets: [{ data: {{ chart_data_receitas|tojson }}, backgroundColor: ['#1a5caf', '#0f8a63', '#c88d1d', '#8e44ad', '#2c3e50', '#d45a3d', '#16a085', '#e67e22', '#c0392b'] }]
         },
         options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
     });
 }
-
+{% endif %}
 </script>
 {% endblock %}
