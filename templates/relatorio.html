@@ -6,7 +6,7 @@
     <style>
         body { font-family: Arial, sans-serif; color: #333; margin: 40px; }
         .cabecalho { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-        .resumo { display: flex; justify-content: space-between; background: #f0f0f0; padding: 20px; border-radius: 8px; font-weight: bold; font-size: 1.1em; }
+        .resumo { display: flex; justify-content: space-between; background: #f0f0f0; padding: 20px; border-radius: 8px; font-weight: bold; font-size: 1.1em; flex-wrap: wrap; gap: 10px; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; margin-bottom: 40px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
         th { background-color: #f8f9fa; }
@@ -29,8 +29,12 @@
 
     <div class="resumo">
         <span>Receitas: <span class="positivo">+ {{ total_receitas | brl }}</span></span>
-        <span>Despesas: <span class="negativo">- {{ total_despesas | brl }}</span></span>
-        <span>Saldo do Período: <span class="{% if saldo < 0 %}negativo{% else %}positivo{% endif %}">{{ saldo | brl }}</span></span>
+        <span>Pagos: <span class="negativo">- {{ total_despesas_pagas | brl }}</span></span>
+        <span>Investido: <span style="color: #c88d1d;">- {{ total_investido | brl }}</span></span>
+        <span style="font-size: 0.9em; color: #777;">(Pendentes: {{ total_despesas_pendentes | brl }})</span>
+        <span style="width: 100%; border-top: 1px dashed #ccc; padding-top: 10px; margin-top: 5px;">
+            Saldo Consolidado: <span class="{% if saldo < 0 %}negativo{% else %}positivo{% endif %}">{{ saldo | brl }}</span>
+        </span>
     </div>
 
     <h3>Entradas (Receitas)</h3>
@@ -63,6 +67,21 @@
         <tr><td colspan="5" style="text-align: center;">Nenhuma despesa registrada neste período.</td></tr>
         {% endfor %}
     </table>
+
+    {% if investimentos %}
+    <h3>Investimentos (Aportes)</h3>
+    <table>
+        <tr><th>Data</th><th>Ativo</th><th>Tipo</th><th class="valor">Valor Aporte</th></tr>
+        {% for i in investimentos %}
+        <tr>
+            <td>{{ i.data_aporte.strftime('%d/%m/%Y') }}</td>
+            <td>{{ i.ativo }}</td>
+            <td>{{ i.tipo }}</td>
+            <td class="valor" style="color: #c88d1d;">- {{ i.valor_aporte | brl }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
 
 </body>
 </html>

@@ -172,7 +172,6 @@ def to_decimal(value: object) -> Decimal:
     if "," in val_str: val_str = val_str.replace(".", "").replace(",", ".")
     return Decimal(val_str).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-# ATUALIZAÇÃO BRL FILTER: O SINAL DE MENOS AGORA FICA BEM VISÍVEL (- R$ 100,00)
 @app.template_filter("brl")
 def brl_filter(value) -> str:
     try: dec_val = Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -456,6 +455,7 @@ def relatorio_pdf(mes, ano):
         
     mov_query = Movimentacao.query.filter(Movimentacao.user_id==uid, Movimentacao.data_registro >= fd, Movimentacao.data_registro <= ld).order_by(Movimentacao.data_registro.desc()).all()
     contas_query = ContaPagar.query.filter(ContaPagar.user_id==uid, ContaPagar.data_vencimento >= fd, ContaPagar.data_vencimento <= ld).order_by(ContaPagar.data_vencimento.asc()).all()
+    inv_query = Investimento.query.filter(Investimento.user_id==uid, Investimento.data_aporte >= fd, Investimento.data_aporte <= ld).order_by(Investimento.data_aporte.desc()).all()
     
     class RelatorioItem:
         def __init__(self, data, desc, status, valor, categoria):
@@ -475,9 +475,23 @@ def relatorio_pdf(mes, ano):
     despesas_completas.sort(key=lambda x: x.data_vencimento)
     
     total_receitas = sum([to_decimal(m.valor) for m in mov_query])
-    total_despesas = sum([to_decimal(d.valor) for d in despesas_completas])
+    total_despesas_pagas = sum([to_decimal(d.valor) for d in despesas_completas if d.pago])
+    total_despesas_pendentes = sum([to_decimal(d.valor) for d in despesas_completas if not d.pago])
+    total_investido = sum([to_decimal(i.valor_aporte) for i in inv_query])
     
-    return render_template("relatorio.html", receitas=mov_query, despesas=despesas_completas, mes_texto=mes_texto, ano=ano, total_receitas=total_receitas, total_despesas=total_despesas, saldo=(total_receitas - total_despesas))
+    saldo_consolidado = total_receitas - total_despesas_pagas - total_investido
+    
+    return render_template("relatorio.html", 
+                           receitas=mov_query, 
+                           despesas=despesas_completas, 
+                           investimentos=inv_query,
+                           mes_texto=mes_texto, 
+                           ano=ano, 
+                           total_receitas=total_receitas, 
+                           total_despesas_pagas=total_despesas_pagas,
+                           total_despesas_pendentes=total_despesas_pendentes,
+                           total_investido=total_investido,
+                           saldo=saldo_consolidado)
 
 @app.route("/configuracoes", methods=["GET"])
 @admin_required
